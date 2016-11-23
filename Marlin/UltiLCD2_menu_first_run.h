@@ -6,7 +6,8 @@
 #define SET_FIRST_RUN_DONE() do { eeprom_write_byte((uint8_t*)EEPROM_FIRST_RUN_DONE_OFFSET, 'U'); } while(0)
 
 void lcd_menu_first_run_init();
-
+void lcd_menu_first_run_temperature_error();
+void lcd_menu_first_run_language();
 
 
 #endif//ULTI_LCD2_MENU_FIRST_RUN_H

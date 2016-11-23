@@ -21,15 +21,15 @@
 #include "Marlin.h"
 #ifdef SDSUPPORT
 
-#ifndef Sd2Card_h
-#define Sd2Card_h
+  #ifndef Sd2Card_h
+    #define Sd2Card_h
 /**
  * \file
  * \brief Sd2Card class for V2 SD/SDHC cards
  */
-#include "SdFatConfig.h"
-#include "Sd2PinMap.h"
-#include "SdInfo.h"
+    #include "SdFatConfig.h"
+    #include "Sd2PinMap.h"
+    #include "SdInfo.h"
 //------------------------------------------------------------------------------
 // SPI speed is F_CPU/2^(1 + index), 0 <= index <= 6
 /** Set SCK to max rate of F_CPU/2. See Sd2Card::setSckRate(). */
@@ -117,27 +117,27 @@ uint8_t const SD_CARD_TYPE_SDHC = 3;
  * define SOFTWARE_SPI to use bit-bang SPI
  */
 //------------------------------------------------------------------------------
-#if MEGA_SOFT_SPI && (defined(__AVR_ATmega1280__)||defined(__AVR_ATmega2560__))
-#define SOFTWARE_SPI
-#elif USE_SOFTWARE_SPI
-#define SOFTWARE_SPI
-#endif  // MEGA_SOFT_SPI
+    #if MEGA_SOFT_SPI && (defined(__AVR_ATmega1280__)||defined(__AVR_ATmega2560__))
+      #define SOFTWARE_SPI
+    #elif USE_SOFTWARE_SPI
+      #define SOFTWARE_SPI
+    #endif // MEGA_SOFT_SPI
 //------------------------------------------------------------------------------
 // SPI pin definitions - do not edit here - change in SdFatConfig.h
 //
-#ifndef SOFTWARE_SPI
+    #ifndef SOFTWARE_SPI
 // hardware pin defs
 /** The default chip select pin for the SD card is SS. */
-uint8_t const  SD_CHIP_SELECT_PIN = SS_PIN;
+uint8_t const SD_CHIP_SELECT_PIN = SS_PIN;
 // The following three pins must not be redefined for hardware SPI.
 /** SPI Master Out Slave In pin */
-uint8_t const  SPI_MOSI_PIN = MOSI_PIN;
+uint8_t const SPI_MOSI_PIN = MOSI_PIN;
 /** SPI Master In Slave Out pin */
-uint8_t const  SPI_MISO_PIN = MISO_PIN;
+uint8_t const SPI_MISO_PIN = MISO_PIN;
 /** SPI Clock pin */
-uint8_t const  SPI_SCK_PIN = SCK_PIN;
+uint8_t const SPI_SCK_PIN = SCK_PIN;
 
-#else  // SOFTWARE_SPI
+    #else // SOFTWARE_SPI
 
 /** SPI chip select pin */
 uint8_t const SD_CHIP_SELECT_PIN = SOFT_SPI_CS_PIN;
@@ -147,16 +147,17 @@ uint8_t const SPI_MOSI_PIN = SOFT_SPI_MOSI_PIN;
 uint8_t const SPI_MISO_PIN = SOFT_SPI_MISO_PIN;
 /** SPI Clock pin */
 uint8_t const SPI_SCK_PIN = SOFT_SPI_SCK_PIN;
-#endif  // SOFTWARE_SPI
+    #endif // SOFTWARE_SPI
 //------------------------------------------------------------------------------
 /**
  * \class Sd2Card
  * \brief Raw access to SD and SDHC flash memory cards.
  */
 class Sd2Card {
- public:
+public:
   /** Construct an instance of Sd2Card. */
-  Sd2Card() : errorCode_(SD_CARD_ERROR_INIT_NOT_CALLED), type_(0) {}
+  Sd2Card() : errorCode_(SD_CARD_ERROR_INIT_NOT_CALLED), type_(0) {
+  }
   uint32_t cardSize();
   bool erase(uint32_t firstBlock, uint32_t lastBlock);
   bool eraseSingleBlockEnable();
@@ -164,13 +165,19 @@ class Sd2Card {
    *  Set SD error code.
    *  \param[in] code value for error code.
    */
-  void error(uint8_t code) {errorCode_ = code; }
+  void error(uint8_t code) {
+    errorCode_ = code;
+  }
   /**
    * \return error code for last error. See Sd2Card.h for a list of error codes.
    */
-  int errorCode() const {return errorCode_;}
+  int errorCode() const {
+    return errorCode_;
+  }
   /** \return error data for last error. */
-  int errorData() const {return status_;}
+  int errorData() const {
+    return status_;
+  }
   /**
    * Initialize an SD flash memory card with default clock rate and chip
    * select pin.  See sd2Card::init(uint8_t sckRateID, uint8_t chipSelectPin).
@@ -178,7 +185,7 @@ class Sd2Card {
    * \return true for success or false for failure.
    */
   bool init(uint8_t sckRateID = SPI_FULL_SPEED,
-    uint8_t chipSelectPin = SD_CHIP_SELECT_PIN);
+            uint8_t chipSelectPin = SD_CHIP_SELECT_PIN);
   bool readBlock(uint32_t block, uint8_t* dst);
   /**
    * Read a card's CID register. The CID contains card identification
@@ -210,12 +217,14 @@ class Sd2Card {
   /** Return the card type: SD V1, SD V2 or SDHC
    * \return 0 - SD V1, 1 - SD V2, or 3 - SDHC.
    */
-  int type() const {return type_;}
+  int type() const {
+    return type_;
+  }
   bool writeBlock(uint32_t blockNumber, const uint8_t* src);
   bool writeData(const uint8_t* src);
   bool writeStart(uint32_t blockNumber, uint32_t eraseCount);
   bool writeStop();
- private:
+private:
   //----------------------------------------------------------------------------
   uint8_t chipSelectPin_;
   uint8_t errorCode_;
@@ -233,11 +242,13 @@ class Sd2Card {
   bool readRegister(uint8_t cmd, void* buf);
   void chipSelectHigh();
   void chipSelectLow();
-  void type(uint8_t value) {type_ = value;}
+  void type(uint8_t value) {
+    type_ = value;
+  }
   bool waitNotBusy(uint16_t timeoutMillis);
   bool writeData(uint8_t token, const uint8_t* src);
 };
-#endif  // Sd2Card_h
+  #endif // Sd2Card_h
 
 
 #endif

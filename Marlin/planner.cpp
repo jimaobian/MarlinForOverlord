@@ -1,54 +1,54 @@
 /*
-  planner.c - buffers movement commands and manages the acceleration profile plan
- Part of Grbl
+   planner.c - buffers movement commands and manages the acceleration profile plan
+   Part of Grbl
 
- Copyright (c) 2009-2011 Simen Svale Skogsrud
+   Copyright (c) 2009-2011 Simen Svale Skogsrud
 
- Grbl is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation, either version 3 of the License, or
- (at your option) any later version.
+   Grbl is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
- Grbl is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
+   Grbl is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
 
- You should have received a copy of the GNU General Public License
- along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
+   You should have received a copy of the GNU General Public License
+   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 /* The ring buffer implementation gleaned from the wiring_serial library by David A. Mellis. */
 
 /*
- Reasoning behind the mathematics in this module (in the key of 'Mathematica'):
+   Reasoning behind the mathematics in this module (in the key of 'Mathematica'):
 
- s == speed, a == acceleration, t == time, d == distance
+   s == speed, a == acceleration, t == time, d == distance
 
- Basic definitions:
+   Basic definitions:
 
- Speed[s_, a_, t_] := s + (a*t)
- Travel[s_, a_, t_] := Integrate[Speed[s, a, t], t]
+   Speed[s_, a_, t_] := s + (a*t)
+   Travel[s_, a_, t_] := Integrate[Speed[s, a, t], t]
 
- Distance to reach a specific speed with a constant acceleration:
+   Distance to reach a specific speed with a constant acceleration:
 
- Solve[{Speed[s, a, t] == m, Travel[s, a, t] == d}, d, t]
- d -> (m^2 - s^2)/(2 a) --> estimate_acceleration_distance()
+   Solve[{Speed[s, a, t] == m, Travel[s, a, t] == d}, d, t]
+   d -> (m^2 - s^2)/(2 a) --> estimate_acceleration_distance()
 
- Speed after a given distance of travel with constant acceleration:
+   Speed after a given distance of travel with constant acceleration:
 
- Solve[{Speed[s, a, t] == m, Travel[s, a, t] == d}, m, t]
- m -> Sqrt[2 a d + s^2]
+   Solve[{Speed[s, a, t] == m, Travel[s, a, t] == d}, m, t]
+   m -> Sqrt[2 a d + s^2]
 
- DestinationSpeed[s_, a_, d_] := Sqrt[2 a d + s^2]
+   DestinationSpeed[s_, a_, d_] := Sqrt[2 a d + s^2]
 
- When to start braking (di) to reach a specified destionation speed (s2) after accelerating
- from initial speed s1 without ever stopping at a plateau:
+   When to start braking (di) to reach a specified destionation speed (s2) after accelerating
+   from initial speed s1 without ever stopping at a plateau:
 
- Solve[{DestinationSpeed[s1, a, di] == DestinationSpeed[s2, a, d - di]}, di]
- di -> (2 a d - s1^2 + s2^2)/(4 a) --> intersection_distance()
+   Solve[{DestinationSpeed[s1, a, di] == DestinationSpeed[s2, a, d - di]}, di]
+   di -> (2 a d - s1^2 + s2^2)/(4 a) --> intersection_distance()
 
- IntersectionDistance[s1_, s2_, a_, d_] := (2 a d - s1^2 + s2^2)/(4 a)
+   IntersectionDistance[s1_, s2_, a_, d_] := (2 a d - s1^2 + s2^2)/(4 a)
  */
 
 #include "Marlin.h"
@@ -61,7 +61,7 @@
 #include "language.h"
 
 #ifdef SoftwareAutoLevel
-#include "fitting_bed.h"
+  #include "fitting_bed.h"
 #endif
 
 //===========================================================================
@@ -109,7 +109,7 @@ volatile unsigned char block_buffer_tail;           // Index of the block to pro
 float extrude_min_temp=EXTRUDE_MINTEMP;
 #endif
 #ifdef XY_FREQUENCY_LIMIT
-#define MAX_FREQ_TIME (1000000.0/XY_FREQUENCY_LIMIT)
+  #define MAX_FREQ_TIME (1000000.0/XY_FREQUENCY_LIMIT)
 // Used for the frequency limit
 static unsigned char old_direction_bits = 0;               // Old direction bits. Used for speed calculations
 static long x_segment_time[3]={MAX_FREQ_TIME + 1,0,0};     // Segment times (in us). Used for speed calculations
@@ -146,10 +146,10 @@ FORCE_INLINE float estimate_acceleration_distance(float initial_rate, float targ
 {
   if (acceleration!=0) {
     return((target_rate*target_rate-initial_rate*initial_rate)/
-      (2.0*acceleration));
+           (2.0*acceleration));
   }
   else {
-    return 0.0;  // acceleration was 0, set acceleration distance to 0
+    return 0.0;     // acceleration was 0, set acceleration distance to 0
   }
 }
 
@@ -162,18 +162,18 @@ FORCE_INLINE float intersection_distance(float initial_rate, float final_rate, f
 {
   if (acceleration!=0) {
     return((2.0*acceleration*distance-initial_rate*initial_rate+final_rate*final_rate)/
-      (4.0*acceleration) );
+           (4.0*acceleration) );
   }
   else {
-    return 0.0;  // acceleration was 0, set intersection distance to 0
+    return 0.0;     // acceleration was 0, set intersection distance to 0
   }
 }
 
 // Calculates trapezoid parameters so that the entry- and exit-speed is compensated by the provided factors.
 
 void calculate_trapezoid_for_block(block_t *block, float entry_factor, float exit_factor) {
-  unsigned long initial_rate = ceil(block->nominal_rate*entry_factor); // (step/min)
-  unsigned long final_rate = ceil(block->nominal_rate*exit_factor); // (step/min)
+  unsigned long initial_rate = ceil(block->nominal_rate*entry_factor);   // (step/min)
+  unsigned long final_rate = ceil(block->nominal_rate*exit_factor);   // (step/min)
 
   // Limit minimal step rate (Otherwise the timer will overflow.)
   if(initial_rate <120) {
@@ -197,8 +197,8 @@ void calculate_trapezoid_for_block(block_t *block, float entry_factor, float exi
   // in order to reach the final_rate exactly at the end of this block.
   if (plateau_steps < 0) {
     accelerate_steps = ceil(intersection_distance(initial_rate, final_rate, acceleration, block->step_event_count));
-    accelerate_steps = max(accelerate_steps,0); // Check limits due to numerical round-off
-    accelerate_steps = min((uint32_t)accelerate_steps,block->step_event_count);//(We can cast here to unsigned, because the above line ensures that we are above zero)
+    accelerate_steps = max(accelerate_steps,0);     // Check limits due to numerical round-off
+    accelerate_steps = min((uint32_t)accelerate_steps,block->step_event_count);    //(We can cast here to unsigned, because the above line ensures that we are above zero)
     plateau_steps = 0;
   }
 
@@ -209,8 +209,8 @@ void calculate_trapezoid_for_block(block_t *block, float entry_factor, float exi
 
   // block->accelerate_until = accelerate_steps;
   // block->decelerate_after = accelerate_steps+plateau_steps;
-  CRITICAL_SECTION_START;  // Fill variables used by the stepper in a critical section
-  if(block->busy == false) { // Don't update variables if block is busy.
+  CRITICAL_SECTION_START;   // Fill variables used by the stepper in a critical section
+  if(block->busy == false) {   // Don't update variables if block is busy.
     block->accelerate_until = accelerate_steps;
     block->decelerate_after = accelerate_steps+plateau_steps;
     block->initial_rate = initial_rate;
@@ -226,7 +226,7 @@ void calculate_trapezoid_for_block(block_t *block, float entry_factor, float exi
 // Calculates the maximum allowable speed at this point when you must be able to reach target_velocity using the
 // acceleration within the allotted distance.
 FORCE_INLINE float max_allowable_speed(float acceleration, float target_velocity, float distance) {
-  return  sqrt(target_velocity*target_velocity-2*acceleration*distance);
+  return sqrt(target_velocity*target_velocity-2*acceleration*distance);
 }
 
 // "Junction jerk" in this context is the immediate change in speed at the junction of two blocks.
@@ -254,7 +254,7 @@ void planner_reverse_pass_kernel(block_t *previous, block_t *current, block_t *n
       // for max allowable speed if block is decelerating and nominal length is false.
       if ((!current->nominal_length_flag) && (current->max_entry_speed > next->entry_speed)) {
         current->entry_speed = min( current->max_entry_speed,
-        max_allowable_speed(-current->acceleration,next->entry_speed,current->millimeters));
+                                    max_allowable_speed(-current->acceleration,next->entry_speed,current->millimeters));
       }
       else {
         current->entry_speed = current->max_entry_speed;
@@ -262,7 +262,7 @@ void planner_reverse_pass_kernel(block_t *previous, block_t *current, block_t *n
       current->recalculate_flag = true;
 
     }
-  } // Skip last block. Already initialized and set for recalculation.
+  }   // Skip last block. Already initialized and set for recalculation.
 }
 
 // planner_recalculate() needs to go over the current plan twice. Once in reverse and once forward. This
@@ -278,7 +278,8 @@ void planner_reverse_pass() {
   if(((block_buffer_head-tail + BLOCK_BUFFER_SIZE) & (BLOCK_BUFFER_SIZE - 1)) > 3) {
     block_index = (block_buffer_head - 3) & (BLOCK_BUFFER_SIZE - 1);
     block_t *block[3] = {
-      NULL, NULL, NULL         };
+      NULL, NULL, NULL
+    };
     while(block_index != tail) {
       block_index = prev_block_index(block_index);
       block[2]= block[1];
@@ -302,7 +303,7 @@ void planner_forward_pass_kernel(block_t *previous, block_t *current, block_t *n
   if (!previous->nominal_length_flag) {
     if (previous->entry_speed < current->entry_speed) {
       double entry_speed = min( current->entry_speed,
-      max_allowable_speed(-previous->acceleration,previous->entry_speed,previous->millimeters) );
+                                max_allowable_speed(-previous->acceleration,previous->entry_speed,previous->millimeters) );
 
       // Check for junction speed change
       if (current->entry_speed != entry_speed) {
@@ -318,7 +319,8 @@ void planner_forward_pass_kernel(block_t *previous, block_t *current, block_t *n
 void planner_forward_pass() {
   uint8_t block_index = block_buffer_tail;
   block_t *block[3] = {
-    NULL, NULL, NULL   };
+    NULL, NULL, NULL
+  };
 
   while(block_index != block_buffer_head) {
     block[0] = block[1];
@@ -346,8 +348,8 @@ void planner_recalculate_trapezoids() {
       if (current->recalculate_flag || next->recalculate_flag) {
         // NOTE: Entry and exit factors always > 0 by all previous logic operations.
         calculate_trapezoid_for_block(current, current->entry_speed/current->nominal_speed,
-        next->entry_speed/current->nominal_speed);
-        current->recalculate_flag = false; // Reset current only to ensure next trapezoid is computed
+                                      next->entry_speed/current->nominal_speed);
+        current->recalculate_flag = false;         // Reset current only to ensure next trapezoid is computed
       }
     }
     block_index = next_block_index( block_index );
@@ -355,7 +357,7 @@ void planner_recalculate_trapezoids() {
   // Last/newest block in buffer. Exit speed is set with MINIMUM_PLANNER_SPEED. Always recalculated.
   if(next != NULL) {
     calculate_trapezoid_for_block(next, next->entry_speed/next->nominal_speed,
-    MINIMUM_PLANNER_SPEED/next->nominal_speed);
+                                  MINIMUM_PLANNER_SPEED/next->nominal_speed);
     next->recalculate_flag = false;
   }
 }
@@ -386,7 +388,7 @@ void planner_recalculate() {
 void plan_init() {
   block_buffer_head = 0;
   block_buffer_tail = 0;
-  memset(position, 0, sizeof(position)); // clear position
+  memset(position, 0, sizeof(position));   // clear position
   previous_speed[0] = 0.0;
   previous_speed[1] = 0.0;
   previous_speed[2] = 0.0;
@@ -403,11 +405,11 @@ void plan_init() {
 void getHighESpeed()
 {
   static float oldt=0;
-  if(!autotemp_enabled){
+  if(!autotemp_enabled) {
     return;
   }
-  if(degTargetHotend0()+2<autotemp_min) {  //probably temperature set to zero.
-    return; //do nothing
+  if(degTargetHotend0()+2<autotemp_min) {   //probably temperature set to zero.
+    return;     //do nothing
   }
 
   float high=0.0;
@@ -415,8 +417,8 @@ void getHighESpeed()
 
   while(block_index != block_buffer_head) {
     if((block_buffer[block_index].steps_x != 0) ||
-      (block_buffer[block_index].steps_y != 0) ||
-      (block_buffer[block_index].steps_z != 0)) {
+       (block_buffer[block_index].steps_y != 0) ||
+       (block_buffer[block_index].steps_z != 0)) {
       float se=(float(block_buffer[block_index].steps_e)/float(block_buffer[block_index].step_event_count))*block_buffer[block_index].nominal_speed;
       //se; mm/sec;
       if(se>high)
@@ -444,29 +446,29 @@ void getHighESpeed()
 
 void check_axes_activity()
 {
-  #if !(DISABLE_X==false && DISABLE_Y==false && DISABLE_Z==false && DISABLE_E==false)
+#if !(DISABLE_X==false && DISABLE_Y==false && DISABLE_Z==false && DISABLE_E==false)
   unsigned char x_active = 0;
   unsigned char y_active = 0;
   unsigned char z_active = 0;
   unsigned char e_active = 0;
-  #endif
+#endif
   unsigned char tail_fan_speed = fanSpeed;
-  #ifdef BARICUDA
+#ifdef BARICUDA
   unsigned char tail_valve_pressure = ValvePressure;
   unsigned char tail_e_to_p_pressure = EtoPPressure;
-  #endif
+#endif
   block_t *block;
 
   if(block_buffer_tail != block_buffer_head)
   {
     uint8_t block_index = block_buffer_tail;
     tail_fan_speed = block_buffer[block_index].fan_speed;
-    #ifdef BARICUDA
+#ifdef BARICUDA
     tail_valve_pressure = block_buffer[block_index].valve_pressure;
     tail_e_to_p_pressure = block_buffer[block_index].e_to_p_pressure;
-    #endif
-    
-    #if !(DISABLE_X==false && DISABLE_Y==false && DISABLE_Z==false && DISABLE_E==false)
+#endif
+
+#if !(DISABLE_X==false && DISABLE_Y==false && DISABLE_Z==false && DISABLE_E==false)
     while(block_index != block_buffer_head)
     {
       block = &block_buffer[block_index];
@@ -476,9 +478,9 @@ void check_axes_activity()
       if(block->steps_e != 0) e_active++;
       block_index = (block_index+1) & (BLOCK_BUFFER_SIZE - 1);
     }
-    #endif
+#endif
   }
-  #if !(DISABLE_X==false && DISABLE_Y==false && DISABLE_Z==false && DISABLE_E==false)
+#if !(DISABLE_X==false && DISABLE_Y==false && DISABLE_Z==false && DISABLE_E==false)
   if((DISABLE_X) && (x_active == 0)) disable_x();
   if((DISABLE_Y) && (y_active == 0)) disable_y();
   if((DISABLE_Z) && (z_active == 0)) disable_z();
@@ -488,21 +490,21 @@ void check_axes_activity()
     disable_e1();
     disable_e2();
   }
-  #endif
+#endif
 #if defined(FAN_PIN) && FAN_PIN > -1
   #ifdef FAN_KICKSTART_TIME
-    static unsigned long fan_kick_end;
-    if (tail_fan_speed) {
-      if (fan_kick_end == 0) {
-        // Just starting up fan - run at full power.
-        fan_kick_end = millis() + FAN_KICKSTART_TIME;
-        tail_fan_speed = 255;
-      } else if (fan_kick_end > millis())
-        // Fan still spinning up.
-        tail_fan_speed = 255;
-    } else {
-      fan_kick_end = 0;
-    }
+  static unsigned long fan_kick_end;
+  if (tail_fan_speed) {
+    if (fan_kick_end == 0) {
+      // Just starting up fan - run at full power.
+      fan_kick_end = millis() + FAN_KICKSTART_TIME;
+      tail_fan_speed = 255;
+    } else if (fan_kick_end > millis())
+      // Fan still spinning up.
+      tail_fan_speed = 255;
+  } else {
+    fan_kick_end = 0;
+  }
   #endif//FAN_KICKSTART_TIME
   #ifdef FAN_SOFT_PWM
   fanSpeedSoftPwm = tail_fan_speed;
@@ -516,17 +518,17 @@ void check_axes_activity()
 
 #ifdef BARICUDA
   #if defined(HEATER_1_PIN) && HEATER_1_PIN > -1
-      analogWrite(HEATER_1_PIN,tail_valve_pressure);
+  analogWrite(HEATER_1_PIN,tail_valve_pressure);
   #endif
 
   #if defined(HEATER_2_PIN) && HEATER_2_PIN > -1
-      analogWrite(HEATER_2_PIN,tail_e_to_p_pressure);
+  analogWrite(HEATER_2_PIN,tail_e_to_p_pressure);
   #endif
 #endif
 }
 
 
-#if 0 
+#if 0
 // Use old jerk for now
 float junction_deviation = 0.1;
 #endif
@@ -536,30 +538,30 @@ float junction_deviation = 0.1;
 // calculation the caller must also provide the physical length of the line in millimeters.
 void plan_buffer_line_old(const float &x, const float &y, const float &z, const float &e, float feed_rate, const uint8_t &extruder)
 {
-    unsigned long powerOnDemandTimerLocal;
-    switch (powerOnDemandState) {
-        case PowerOnDemandSleeping:
-            powerOnDemandState=PowerOnDemandStarting;
-            powerOnDemandTimerLocal=millis();
-            newPowerWakeUp();
-            while (true) {
-                manage_heater();
-                manage_inactivity();
-                if (millis()-powerOnDemandTimerLocal>=2000UL) {
-                    break;
-                }
-            }
-            st_wake_up();
-            break;
-        case PowerOnDemandStopping:
-            powerOnDemandState=PowerOnDemandWorking;
-            break;
-        default:
-            break;
+  unsigned long powerOnDemandTimerLocal;
+  switch (powerOnDemandState) {
+  case PowerOnDemandSleeping:
+    powerOnDemandState=PowerOnDemandStarting;
+    powerOnDemandTimerLocal=millis();
+    newPowerWakeUp();
+    while (true) {
+      manage_heater();
+      manage_inactivity();
+      if (millis()-powerOnDemandTimerLocal>=2000UL) {
+        break;
+      }
     }
-  
-    
-    
+    st_wake_up();
+    break;
+  case PowerOnDemandStopping:
+    powerOnDemandState=PowerOnDemandWorking;
+    break;
+  default:
+    break;
+  }
+
+
+
   // Calculate the buffer head after we push this byte
   int next_buffer_head = next_block_index(block_buffer_head);
 
@@ -581,34 +583,34 @@ void plan_buffer_line_old(const float &x, const float &y, const float &z, const 
   target[Y_AXIS] = lround(y*axis_steps_per_unit[Y_AXIS]);
   target[Z_AXIS] = lround(z*axis_steps_per_unit[Z_AXIS]);
   target[E_AXIS] = lround(e*axis_steps_per_unit[E_AXIS]*volume_to_filament_length[extruder]);
-  
+
 #ifdef PREVENT_DANGEROUS_EXTRUDE
   if(target[E_AXIS]!=position[E_AXIS])
-    {
+  {
     if(degHotend(extruder)<extrude_min_temp)
-      {
-      position[E_AXIS]=target[E_AXIS]; //behave as if the move really took place, but ignore E part
+    {
+      position[E_AXIS]=target[E_AXIS];       //behave as if the move really took place, but ignore E part
       SERIAL_ECHO_START;
       SERIAL_ECHOLNPGM(MSG_ERR_COLD_EXTRUDE_STOP);
-      }
-    
-#ifdef PREVENT_LENGTHY_EXTRUDE
+    }
+
+  #ifdef PREVENT_LENGTHY_EXTRUDE
     if(labs(target[E_AXIS]-position[E_AXIS])>axis_steps_per_unit[E_AXIS]*EXTRUDE_MAXLENGTH)
-      {
-      position[E_AXIS]=target[E_AXIS]; //behave as if the move really took place, but ignore E part
+    {
+      position[E_AXIS]=target[E_AXIS];       //behave as if the move really took place, but ignore E part
       SERIAL_ECHO_START;
       SERIAL_ECHOLNPGM(MSG_ERR_LONG_EXTRUDE_STOP);
-      }
-#endif
     }
+  #endif
+  }
 #endif
-  
+
   // Prepare to set up new block
   block_t *block = &block_buffer[block_buffer_head];
-  
+
   // Mark block as not busy (Not executed by the stepper interrupt)
   block->busy = false;
-  
+
   // Number of steps for each axis
 #ifndef COREXY
   // default non-h-bot planning
@@ -625,58 +627,58 @@ void plan_buffer_line_old(const float &x, const float &y, const float &z, const 
   block->steps_e *= extrudemultiply[extruder];
   block->steps_e /= 100;
   block->step_event_count = max(block->steps_x, max(block->steps_y, max(block->steps_z, block->steps_e)));
-  
+
   // Bail if this is a zero-length block
   if (block->step_event_count <= dropsegments)
-    {
-      return;
-    }
-  
+  {
+    return;
+  }
+
   block->fan_speed = fanSpeed;
 #ifdef BARICUDA
   block->valve_pressure = ValvePressure;
   block->e_to_p_pressure = EtoPPressure;
 #endif
-  
+
   // Compute direction bits for this block
   block->direction_bits = 0;
 #ifndef COREXY
   if (target[X_AXIS] < position[X_AXIS])
-    {
+  {
     block->direction_bits |= (1<<X_AXIS);
-    }
+  }
   if (target[Y_AXIS] < position[Y_AXIS])
-    {
+  {
     block->direction_bits |= (1<<Y_AXIS);
-    }
+  }
 #else
   if ((target[X_AXIS]-position[X_AXIS]) + (target[Y_AXIS]-position[Y_AXIS]) < 0)
-    {
+  {
     block->direction_bits |= (1<<X_AXIS);
-    }
+  }
   if ((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-position[Y_AXIS]) < 0)
-    {
+  {
     block->direction_bits |= (1<<Y_AXIS);
-    }
+  }
 #endif
   if (target[Z_AXIS] < position[Z_AXIS])
-    {
+  {
     block->direction_bits |= (1<<Z_AXIS);
-    }
+  }
   if (target[E_AXIS] < position[E_AXIS])
-    {
+  {
     block->direction_bits |= (1<<E_AXIS);
-    }
-  
+  }
+
   block->active_extruder = extruder;
-  
+
   //enable active axes
 #ifdef COREXY
   if((block->steps_x != 0) || (block->steps_y != 0))
-    {
+  {
     enable_x();
     enable_y();
-    }
+  }
 #else
   if(block->steps_x != 0) enable_x();
   if(block->steps_y != 0) enable_y();
@@ -684,24 +686,24 @@ void plan_buffer_line_old(const float &x, const float &y, const float &z, const 
 #ifndef Z_LATE_ENABLE
   if(block->steps_z != 0) enable_z();
 #endif
-  
+
   // Enable all
   if(block->steps_e != 0)
-    {
+  {
     enable_e0();
     enable_e1();
     enable_e2();
-    }
-  
+  }
+
   if (block->steps_e == 0)
-    {
+  {
     if(feed_rate<mintravelfeedrate) feed_rate=mintravelfeedrate;
-    }
+  }
   else
-    {
+  {
     if(feed_rate<minimumfeedrate) feed_rate=minimumfeedrate;
-    }
-  
+  }
+
   float delta_mm[4];
 #ifndef COREXY
   delta_mm[X_AXIS] = (target[X_AXIS]-position[X_AXIS])/axis_steps_per_unit[X_AXIS];
@@ -713,111 +715,111 @@ void plan_buffer_line_old(const float &x, const float &y, const float &z, const 
   delta_mm[Z_AXIS] = (target[Z_AXIS]-position[Z_AXIS])/axis_steps_per_unit[Z_AXIS];
   delta_mm[E_AXIS] = ((target[E_AXIS]-position[E_AXIS])/axis_steps_per_unit[E_AXIS])*extrudemultiply[extruder]/100.0;
   if ( block->steps_x <=dropsegments && block->steps_y <=dropsegments && block->steps_z <=dropsegments )
-    {
+  {
     block->millimeters = fabs(delta_mm[E_AXIS]);
-    }
+  }
   else
-    {
+  {
     block->millimeters = sqrt(square(delta_mm[X_AXIS]) + square(delta_mm[Y_AXIS]) + square(delta_mm[Z_AXIS]));
-    }
-  float inverse_millimeters = 1.0/block->millimeters;  // Inverse millimeters to remove multiple divides
-  
+  }
+  float inverse_millimeters = 1.0/block->millimeters;   // Inverse millimeters to remove multiple divides
+
   // Calculate speed in mm/second for each axis. No divide by zero due to previous checks.
   float inverse_second = feed_rate * inverse_millimeters;
-  
+
   int moves_queued=(block_buffer_head-block_buffer_tail + BLOCK_BUFFER_SIZE) & (BLOCK_BUFFER_SIZE - 1);
-  
+
   // slow down when de buffer starts to empty, rather than wait at the corner for a buffer refill
 #ifdef OLD_SLOWDOWN
   if(moves_queued < (BLOCK_BUFFER_SIZE * 0.5) && moves_queued > 1)
     feed_rate = feed_rate*moves_queued / (BLOCK_BUFFER_SIZE * 0.5);
 #endif
-  
+
 #ifdef SLOWDOWN
   //  segment time im micro seconds
   unsigned long segment_time = lround(1000000.0/inverse_second);
   if ((moves_queued > 1) && (moves_queued < (BLOCK_BUFFER_SIZE * 0.5)))
-    {
+  {
     if (segment_time < minsegmenttime)
-      { // buffer is draining, add extra time.  The amount of time added increases if the buffer is still emptied more.
-        inverse_second=1000000.0/(segment_time+lround(2*(minsegmenttime-segment_time)/moves_queued));
-#ifdef XY_FREQUENCY_LIMIT
-        segment_time = lround(1000000.0/inverse_second);
-#endif
-      }
+    {     // buffer is draining, add extra time.  The amount of time added increases if the buffer is still emptied more.
+      inverse_second=1000000.0/(segment_time+lround(2*(minsegmenttime-segment_time)/moves_queued));
+  #ifdef XY_FREQUENCY_LIMIT
+      segment_time = lround(1000000.0/inverse_second);
+  #endif
     }
+  }
 #endif
   //  END OF SLOW DOWN SECTION
-  
-  
-  block->nominal_speed = block->millimeters * inverse_second; // (mm/sec) Always > 0
-  block->nominal_rate = ceil(block->step_event_count * inverse_second); // (step/sec) Always > 0
-  
+
+
+  block->nominal_speed = block->millimeters * inverse_second;   // (mm/sec) Always > 0
+  block->nominal_rate = ceil(block->step_event_count * inverse_second);   // (step/sec) Always > 0
+
   // Calculate and limit speed in mm/sec for each axis
   float current_speed[4];
-  float speed_factor = 1.0; //factor <=1 do decrease speed
+  float speed_factor = 1.0;   //factor <=1 do decrease speed
   for(int i=0; i < 4; i++)
-    {
+  {
     current_speed[i] = delta_mm[i] * inverse_second;
     if(fabs(current_speed[i]) > max_feedrate[i])
       speed_factor = min(speed_factor, max_feedrate[i] / fabs(current_speed[i]));
-    }
-  
+  }
+
   // Max segement time in us.
 #ifdef XY_FREQUENCY_LIMIT
-#define MAX_FREQ_TIME (1000000.0/XY_FREQUENCY_LIMIT)
+  #define MAX_FREQ_TIME (1000000.0/XY_FREQUENCY_LIMIT)
   // Check and limit the xy direction change frequency
   unsigned char direction_change = block->direction_bits ^ old_direction_bits;
   old_direction_bits = block->direction_bits;
   segment_time = lround((float)segment_time / speed_factor);
-  
+
   if((direction_change & (1<<X_AXIS)) == 0)
-    {
+  {
     x_segment_time[0] += segment_time;
-    }
+  }
   else
-    {
+  {
     x_segment_time[2] = x_segment_time[1];
     x_segment_time[1] = x_segment_time[0];
     x_segment_time[0] = segment_time;
-    }
+  }
   if((direction_change & (1<<Y_AXIS)) == 0)
-    {
+  {
     y_segment_time[0] += segment_time;
-    }
+  }
   else
-    {
+  {
     y_segment_time[2] = y_segment_time[1];
     y_segment_time[1] = y_segment_time[0];
     y_segment_time[0] = segment_time;
-    }
+  }
   long max_x_segment_time = max(x_segment_time[0], max(x_segment_time[1], x_segment_time[2]));
   long max_y_segment_time = max(y_segment_time[0], max(y_segment_time[1], y_segment_time[2]));
   long min_xy_segment_time =min(max_x_segment_time, max_y_segment_time);
   if(min_xy_segment_time < MAX_FREQ_TIME)
     speed_factor = min(speed_factor, speed_factor * (float)min_xy_segment_time / (float)MAX_FREQ_TIME);
 #endif
-  
+
   // Correct the speed
   if( speed_factor < 1.0)
-    {
+  {
     for(unsigned char i=0; i < 4; i++)
-      {
+    {
       current_speed[i] *= speed_factor;
-      }
+    }
     block->nominal_speed *= speed_factor;
     block->nominal_rate *= speed_factor;
-    }
-  
+  }
+
   // Compute and limit the acceleration rate for the trapezoid generator.
   float steps_per_mm = block->step_event_count/block->millimeters;
   if(block->steps_x == 0 && block->steps_y == 0 && block->steps_z == 0)
-    {
-    block->acceleration_st = ceil(retract_acceleration * steps_per_mm); // convert to: acceleration steps/sec^2
-    }
+  {
+    block->acceleration_st = ceil(retract_acceleration * steps_per_mm);     // convert to: acceleration steps/sec^2
+  }
   else
-    {
-    block->acceleration_st = ceil(acceleration * steps_per_mm); // convert to: acceleration steps/sec^2
+  {
+    block->acceleration_st = ceil(acceleration * steps_per_mm);     // convert to: acceleration steps/sec^2
     // Limit acceleration per axis
     if(((float)block->acceleration_st * (float)block->steps_x / (float)block->step_event_count) > axis_steps_per_sqr_second[X_AXIS])
       block->acceleration_st = axis_steps_per_sqr_second[X_AXIS];
@@ -827,18 +829,18 @@ void plan_buffer_line_old(const float &x, const float &y, const float &z, const 
       block->acceleration_st = axis_steps_per_sqr_second[E_AXIS];
     if(((float)block->acceleration_st * (float)block->steps_z / (float)block->step_event_count ) > axis_steps_per_sqr_second[Z_AXIS])
       block->acceleration_st = axis_steps_per_sqr_second[Z_AXIS];
-    }
+  }
   block->acceleration = block->acceleration_st / steps_per_mm;
   block->acceleration_rate = (long)((float)block->acceleration_st * (16777216.0 / (F_CPU / 8.0)));
-  
+
 #if 0  // Use old jerk for now
        // Compute path unit vector
   double unit_vec[3];
-  
+
   unit_vec[X_AXIS] = delta_mm[X_AXIS]*inverse_millimeters;
   unit_vec[Y_AXIS] = delta_mm[Y_AXIS]*inverse_millimeters;
   unit_vec[Z_AXIS] = delta_mm[Z_AXIS]*inverse_millimeters;
-  
+
   // Compute maximum allowable entry speed at junction by centripetal acceleration approximation.
   // Let a circle be tangent to both previous and current path line segments, where the junction
   // deviation is defined as the distance from the junction to the closest edge of the circle,
@@ -848,23 +850,23 @@ void plan_buffer_line_old(const float &x, const float &y, const float &z, const 
   // path width or max_jerk in the previous grbl version. This approach does not actually deviate
   // from path, but used as a robust way to compute cornering speeds, as it takes into account the
   // nonlinearities of both the junction angle and junction velocity.
-  double vmax_junction = MINIMUM_PLANNER_SPEED; // Set default max junction speed
-  
+  double vmax_junction = MINIMUM_PLANNER_SPEED;   // Set default max junction speed
+
   // Skip first block or when previous_nominal_speed is used as a flag for homing and offset cycles.
   if ((block_buffer_head != block_buffer_tail) && (previous_nominal_speed > 0.0)) {
     // Compute cosine of angle between previous and current path. (prev_unit_vec is negative)
     // NOTE: Max junction velocity is computed without sin() or acos() by trig half angle identity.
-    double cos_theta = - previous_unit_vec[X_AXIS] * unit_vec[X_AXIS]
-    - previous_unit_vec[Y_AXIS] * unit_vec[Y_AXIS]
-    - previous_unit_vec[Z_AXIS] * unit_vec[Z_AXIS] ;
-    
+    double cos_theta = -previous_unit_vec[X_AXIS] * unit_vec[X_AXIS]
+                       - previous_unit_vec[Y_AXIS] * unit_vec[Y_AXIS]
+                       - previous_unit_vec[Z_AXIS] * unit_vec[Z_AXIS];
+
     // Skip and use default max junction speed for 0 degree acute junction.
     if (cos_theta < 0.95) {
       vmax_junction = min(previous_nominal_speed,block->nominal_speed);
       // Skip and avoid divide by zero for straight junctions at 180 degrees. Limit to min() of nominal speeds.
       if (cos_theta > -0.95) {
         // Compute maximum junction velocity based on maximum acceleration and junction deviation
-        double sin_theta_d2 = sqrt(0.5*(1.0-cos_theta)); // Trig half angle identity. Always positive.
+        double sin_theta_d2 = sqrt(0.5*(1.0-cos_theta));         // Trig half angle identity. Always positive.
         vmax_junction = min(vmax_junction,
                             sqrt(block->acceleration * junction_deviation * sin_theta_d2/(1.0-sin_theta_d2)) );
       }
@@ -880,7 +882,7 @@ void plan_buffer_line_old(const float &x, const float &y, const float &z, const 
     vmax_junction = min(vmax_junction, max_e_jerk/2);
   vmax_junction = min(vmax_junction, block->nominal_speed);
   float safe_speed = vmax_junction;
-  
+
   if ((moves_queued > 1) && (previous_nominal_speed > 0.0001)) {
     float xy_jerk = sqrt(square(current_speed[X_AXIS]-previous_speed[X_AXIS])+square(current_speed[Y_AXIS]-previous_speed[Y_AXIS]));
     //    if((fabs(previous_speed[X_AXIS]) > 0.0001) || (fabs(previous_speed[Y_AXIS]) > 0.0001)) {
@@ -895,14 +897,14 @@ void plan_buffer_line_old(const float &x, const float &y, const float &z, const 
     if(fabs(current_speed[E_AXIS] - previous_speed[E_AXIS]) > max_e_jerk) {
       vmax_junction_factor = min(vmax_junction_factor, (max_e_jerk/fabs(current_speed[E_AXIS] - previous_speed[E_AXIS])));
     }
-    vmax_junction = min(previous_nominal_speed, vmax_junction * vmax_junction_factor); // Limit speed to max previous speed
+    vmax_junction = min(previous_nominal_speed, vmax_junction * vmax_junction_factor);     // Limit speed to max previous speed
   }
   block->max_entry_speed = vmax_junction;
-  
+
   // Initialize block entry speed. Compute based on deceleration to user-defined MINIMUM_PLANNER_SPEED.
   double v_allowable = max_allowable_speed(-block->acceleration,MINIMUM_PLANNER_SPEED,block->millimeters);
   block->entry_speed = min(vmax_junction, v_allowable);
-  
+
   // Initialize planner efficiency flags
   // Set flag if block will always reach maximum junction speed regardless of entry/exit speeds.
   // If a block can de/ac-celerate from nominal speed to zero within the length of the block, then
@@ -917,13 +919,13 @@ void plan_buffer_line_old(const float &x, const float &y, const float &z, const 
   else {
     block->nominal_length_flag = false;
   }
-  block->recalculate_flag = true; // Always calculate trapezoid for new block
-  
+  block->recalculate_flag = true;   // Always calculate trapezoid for new block
+
   // Update previous path unit_vector and nominal speed
-  memcpy(previous_speed, current_speed, sizeof(previous_speed)); // previous_speed[] = current_speed[]
+  memcpy(previous_speed, current_speed, sizeof(previous_speed));   // previous_speed[] = current_speed[]
   previous_nominal_speed = block->nominal_speed;
-  
-  
+
+
 #ifdef ADVANCE
   // Calculate advance rate
   if((block->steps_e == 0) || (block->steps_x == 0 && block->steps_y == 0 && block->steps_z == 0)) {
@@ -933,7 +935,7 @@ void plan_buffer_line_old(const float &x, const float &y, const float &z, const 
   else {
     long acc_dist = estimate_acceleration_distance(0, block->nominal_rate, block->acceleration_st);
     float advance = (STEPS_PER_CUBIC_MM_E * EXTRUDER_ADVANCE_K) *
-    (current_speed[E_AXIS] * current_speed[E_AXIS] * EXTRUTION_AREA * EXTRUTION_AREA)*256;
+                    (current_speed[E_AXIS] * current_speed[E_AXIS] * EXTRUTION_AREA * EXTRUTION_AREA)*256;
     block->advance = advance;
     if(acc_dist == 0) {
       block->advance_rate = 0;
@@ -943,158 +945,158 @@ void plan_buffer_line_old(const float &x, const float &y, const float &z, const 
     }
   }
   /*
-   SERIAL_ECHO_START;
-   SERIAL_ECHOPGM("advance :");
-   SERIAL_ECHO(block->advance/256.0);
-   SERIAL_ECHOPGM("advance rate :");
-   SERIAL_ECHOLN(block->advance_rate/256.0);
+     SERIAL_ECHO_START;
+     SERIAL_ECHOPGM("advance :");
+     SERIAL_ECHO(block->advance/256.0);
+     SERIAL_ECHOPGM("advance rate :");
+     SERIAL_ECHOLN(block->advance_rate/256.0);
    */
 #endif // ADVANCE
-  
+
   calculate_trapezoid_for_block(block, block->entry_speed/block->nominal_speed, safe_speed/block->nominal_speed);
-  
+
   // Move buffer head
   block_buffer_head = next_buffer_head;
-  
+
   // Update position
-  memcpy(position, target, sizeof(target)); // position[] = target[]
-  
+  memcpy(position, target, sizeof(target));   // position[] = target[]
+
   planner_recalculate();
-  
+
 
 }
 
 #define Sqrt32(intRes, longIn1) \
-asm volatile ( \
-"ldi   R27,0xc0 \n\t" \
-"clr   R26 \n\t" \
-"ldi   %B0,0x40 \n\t" \
-"sub   %A0,%A0  \n\t" \
-"_sq32_1%=:    brcs  _sq32_2%= \n\t" \
-"cp    %C1,%A0 \n\t" \
-"cpc   %D1,%B0 \n\t" \
-"brcs  _sq32_3%= \n\t" \
-"_sq32_2%=:    sub   %C1,%A0 \n\t" \
-"sbc   %D1,%B0  \n\t" \
-"or    %A0,R26 \n\t" \
-"or    %B0,R27 \n\t" \
-"_sq32_3%=:    lsr   R27 \n\t" \
-"ror   R26 \n\t" \
-"eor   %B0,R27 \n\t" \
-"eor   %A0,R26 \n\t" \
-"rol   %A1 \n\t" \
-"rol   %B1 \n\t" \
-"rol   %C1 \n\t" \
-"rol   %D1 \n\t" \
-"sbrs  %A1,0 \n\t" \
-"rjmp  _sq32_1%= \n\t" \
-"brcs  _sq32_4%= \n\t" \
-"cp    %A0,%C1 \n\t" \
-"cpc   %B0,%D1 \n\t" \
-"brcc  _sq32_5%= \n\t" \
-"_sq32_4%=:    sbc   %B1,R27 \n\t" \
-"sbc   %C1,%A0 \n\t" \
-"sbc   %D1,%B0 \n\t" \
-"inc   %A0 \n\t" \
-"_sq32_5%=:    lsl   %B1 \n\t" \
-"rol   %C1 \n\t" \
-"rol   %D1 \n\t" \
-"brcs  _sq32_6%=  \n\t" \
-"cp    %A0,%C1 \n\t" \
-"cpc   %B0,%D1 \n\t" \
-"_sq32_6%=:    adc   %A0,R27 \n\t" \
-"adc   %B0,R27 \n\t" \
-: \
-"=&d" (intRes) \
-: \
-"d" (longIn1) \
-: \
-"r26" , "r27" \
-)
+  asm volatile ( \
+    "ldi   R27,0xc0 \n\t" \
+    "clr   R26 \n\t" \
+    "ldi   %B0,0x40 \n\t" \
+    "sub   %A0,%A0  \n\t" \
+    "_sq32_1%=:    brcs  _sq32_2%= \n\t" \
+    "cp    %C1,%A0 \n\t" \
+    "cpc   %D1,%B0 \n\t" \
+    "brcs  _sq32_3%= \n\t" \
+    "_sq32_2%=:    sub   %C1,%A0 \n\t" \
+    "sbc   %D1,%B0  \n\t" \
+    "or    %A0,R26 \n\t" \
+    "or    %B0,R27 \n\t" \
+    "_sq32_3%=:    lsr   R27 \n\t" \
+    "ror   R26 \n\t" \
+    "eor   %B0,R27 \n\t" \
+    "eor   %A0,R26 \n\t" \
+    "rol   %A1 \n\t" \
+    "rol   %B1 \n\t" \
+    "rol   %C1 \n\t" \
+    "rol   %D1 \n\t" \
+    "sbrs  %A1,0 \n\t" \
+    "rjmp  _sq32_1%= \n\t" \
+    "brcs  _sq32_4%= \n\t" \
+    "cp    %A0,%C1 \n\t" \
+    "cpc   %B0,%D1 \n\t" \
+    "brcc  _sq32_5%= \n\t" \
+    "_sq32_4%=:    sbc   %B1,R27 \n\t" \
+    "sbc   %C1,%A0 \n\t" \
+    "sbc   %D1,%B0 \n\t" \
+    "inc   %A0 \n\t" \
+    "_sq32_5%=:    lsl   %B1 \n\t" \
+    "rol   %C1 \n\t" \
+    "rol   %D1 \n\t" \
+    "brcs  _sq32_6%=  \n\t" \
+    "cp    %A0,%C1 \n\t" \
+    "cpc   %B0,%D1 \n\t" \
+    "_sq32_6%=:    adc   %A0,R27 \n\t" \
+    "adc   %B0,R27 \n\t" \
+    : \
+    "=&d" (intRes) \
+    : \
+    "d" (longIn1) \
+    : \
+    "r26", "r27" \
+    )
 
 void calculate_delta_long(long *deltaPosition, long *realPostion)
 {
   uint32_t radicand;
   uint32_t squareNum;
   uint16_t root;
-  
+
   radicand=(long)(sq(DELTA_DIAGONAL_ROD*STEPS_PER_UNIT_DELTA));
 
   squareNum=(long)(DELTA_TOWER1_X*STEPS_PER_UNIT_DELTA)-realPostion[X_AXIS];
   radicand-=sq(squareNum);
-  
+
   squareNum=(long)(DELTA_TOWER1_Y*STEPS_PER_UNIT_DELTA)-realPostion[Y_AXIS];
   radicand-=sq(squareNum);
-  
+
   Sqrt32(root,radicand);
-  
+
   deltaPosition[X_AXIS]=realPostion[Z_AXIS]+root;
-  
+
   ////////////////////////////////////////
-  
+
   radicand=(long)(sq(DELTA_DIAGONAL_ROD*STEPS_PER_UNIT_DELTA));
-  
+
   squareNum=(long)(DELTA_TOWER2_X*STEPS_PER_UNIT_DELTA)-realPostion[X_AXIS];
   radicand-=sq(squareNum);
-  
+
   squareNum=(long)(DELTA_TOWER2_Y*STEPS_PER_UNIT_DELTA)-realPostion[Y_AXIS];
   radicand-=sq(squareNum);
-  
+
   Sqrt32(root,radicand);
-  
+
   deltaPosition[Y_AXIS]=realPostion[Z_AXIS]+root;
-  
+
   ////////////////////////////////////////
-  
+
   radicand=(long)(sq(DELTA_DIAGONAL_ROD*STEPS_PER_UNIT_DELTA));
-  
+
   squareNum=(long)(DELTA_TOWER3_X*STEPS_PER_UNIT_DELTA)-realPostion[X_AXIS];
   radicand-=sq(squareNum);
-  
+
   squareNum=(long)(DELTA_TOWER3_Y*STEPS_PER_UNIT_DELTA)-realPostion[Y_AXIS];
   radicand-=sq(squareNum);
-  
+
   Sqrt32(root,radicand);
-  
+
   deltaPosition[Z_AXIS]=realPostion[Z_AXIS]+root;
 }
 
-// Add a new linear movement to the buffer. steps_x, _y and _z is the absolute position in 
+// Add a new linear movement to the buffer. steps_x, _y and _z is the absolute position in
 // mm. Microseconds specify how many microseconds the move should take to perform. To aid acceleration
 // calculation the caller must also provide the physical length of the line in millimeters.
 void plan_buffer_line(const float &x, const float &y, const float &z, const float &e, float feed_rate, const uint8_t &extruder)
 {
-    unsigned long powerOnDemandTimerLocal;
-    switch (powerOnDemandState) {
-        case PowerOnDemandSleeping:
-            powerOnDemandState=PowerOnDemandStarting;
-            powerOnDemandTimerLocal=millis();
-            newPowerWakeUp();
-            while (true) {
-                manage_heater();
-                manage_inactivity();
-                if (millis()-powerOnDemandTimerLocal>=2000UL) {
-                    break;
-                }
-            }
-            st_wake_up();
-            break;
-        case PowerOnDemandStopping:
-            powerOnDemandState=PowerOnDemandWorking;
-            break;
-        default:
-            break;
+  unsigned long powerOnDemandTimerLocal;
+  switch (powerOnDemandState) {
+  case PowerOnDemandSleeping:
+    powerOnDemandState=PowerOnDemandStarting;
+    powerOnDemandTimerLocal=millis();
+    newPowerWakeUp();
+    while (true) {
+      manage_heater();
+      manage_inactivity();
+      if (millis()-powerOnDemandTimerLocal>=2000UL) {
+        break;
+      }
     }
-  
+    st_wake_up();
+    break;
+  case PowerOnDemandStopping:
+    powerOnDemandState=PowerOnDemandWorking;
+    break;
+  default:
+    break;
+  }
+
   // Calculate the buffer head after we push this byte
   int next_buffer_head = next_block_index(block_buffer_head);
 
-  // If the buffer is full: good! That means we are well ahead of the robot. 
+  // If the buffer is full: good! That means we are well ahead of the robot.
   // Rest here until there is room in the buffer.
   while(block_buffer_tail == next_buffer_head)
   {
-    manage_heater(); 
-    manage_inactivity(); 
+    manage_heater();
+    manage_inactivity();
     lcd_update();
   }
 
@@ -1104,39 +1106,39 @@ void plan_buffer_line(const float &x, const float &y, const float &z, const floa
   long target[4];
   long target_raw[3];
 
-  float plainFactorZBuffer = z*plainFactorCAC -x*plainFactorAAC;
-  
-  target[X_AXIS] = lround((z*plainFactorAAC+x*plainFactorCAC)*axis_steps_per_unit[X_AXIS]);
-  target[Y_AXIS] = lround((y*plainFactorCBC-plainFactorZBuffer*plainFactorBBC)*axis_steps_per_unit[Y_AXIS]);
-  target[Z_AXIS] = lround((y*plainFactorBBC+plainFactorZBuffer*plainFactorCBC)*axis_steps_per_unit[Z_AXIS]);
+  float plainFactorZBuffer = z-z*plainFactorCAC -x*plainFactorAAC;
+
+  target[X_AXIS] = lround((z*plainFactorAAC+x-x*plainFactorCAC)*axis_steps_per_unit[X_AXIS]);
+  target[Y_AXIS] = lround((y-y*plainFactorCBC-plainFactorZBuffer*plainFactorBBC)*axis_steps_per_unit[Y_AXIS]);
+  target[Z_AXIS] = lround((y*plainFactorBBC+plainFactorZBuffer- plainFactorZBuffer*plainFactorCBC)*axis_steps_per_unit[Z_AXIS]);
   target[E_AXIS] = lround(e*axis_steps_per_unit[E_AXIS]*volume_to_filament_length[extruder]);
-  
+
   calculate_delta_long(target_raw, target);
-  
-//  SERIAL_ECHOLNPGM("target[E_AXIS]_raw");
-//  SERIAL_ECHOLN(position[E_AXIS]);
-//  SERIAL_ECHOLN(target[E_AXIS]);
-  
-  #ifdef PREVENT_DANGEROUS_EXTRUDE
+
+  //  SERIAL_ECHOLNPGM("target[E_AXIS]_raw");
+  //  SERIAL_ECHOLN(position[E_AXIS]);
+  //  SERIAL_ECHOLN(target[E_AXIS]);
+
+#ifdef PREVENT_DANGEROUS_EXTRUDE
   if(target[E_AXIS]!=position[E_AXIS])
   {
     if(degHotend(extruder)<extrude_min_temp)
     {
-      position[E_AXIS]=target[E_AXIS]; //behave as if the move really took place, but ignore E part
+      position[E_AXIS]=target[E_AXIS];       //behave as if the move really took place, but ignore E part
       SERIAL_ECHO_START;
       SERIAL_ECHOLNPGM(MSG_ERR_COLD_EXTRUDE_STOP);
     }
-    
-    #ifdef PREVENT_LENGTHY_EXTRUDE
+
+  #ifdef PREVENT_LENGTHY_EXTRUDE
     if(labs(target[E_AXIS]-position[E_AXIS])>axis_steps_per_unit[E_AXIS]*EXTRUDE_MAXLENGTH)
     {
-      position[E_AXIS]=target[E_AXIS]; //behave as if the move really took place, but ignore E part
+      position[E_AXIS]=target[E_AXIS];       //behave as if the move really took place, but ignore E part
       SERIAL_ECHO_START;
       SERIAL_ECHOLNPGM(MSG_ERR_LONG_EXTRUDE_STOP);
     }
-    #endif
-  }
   #endif
+  }
+#endif
 
   // Prepare to set up new block
   block_t *block = &block_buffer[block_buffer_head];
@@ -1147,18 +1149,18 @@ void plan_buffer_line(const float &x, const float &y, const float &z, const floa
 
   // Number of steps for each axis
 #ifndef COREXY
-// default non-h-bot planning
-block->steps_x = labs(target_raw[X_AXIS]-position_raw[X_AXIS]);
-block->steps_y = labs(target_raw[Y_AXIS]-position_raw[Y_AXIS]);
+  // default non-h-bot planning
+  block->steps_x = labs(target_raw[X_AXIS]-position_raw[X_AXIS]);
+  block->steps_y = labs(target_raw[Y_AXIS]-position_raw[Y_AXIS]);
 #else
-// corexy planning
-// these equations follow the form of the dA and dB equations on http://www.corexy.com/theory.html
-block->steps_x = labs((target[X_AXIS]-position[X_AXIS]) + (target[Y_AXIS]-position[Y_AXIS]));
-block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-position[Y_AXIS]));
+  // corexy planning
+  // these equations follow the form of the dA and dB equations on http://www.corexy.com/theory.html
+  block->steps_x = labs((target[X_AXIS]-position[X_AXIS]) + (target[Y_AXIS]-position[Y_AXIS]));
+  block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-position[Y_AXIS]));
 #endif
   block->steps_z = labs(target_raw[Z_AXIS]-position_raw[Z_AXIS]);
   block->steps_e = labs(target[E_AXIS]-position[E_AXIS]);
-  
+
   block->steps_e *= extrudemultiply[extruder];
   block->steps_e /= 100;
   block->step_event_count = max(block->steps_x, max(block->steps_y, max(block->steps_z, block->steps_e)));
@@ -1170,10 +1172,10 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
   }
 
   block->fan_speed = fanSpeed;
-  #ifdef BARICUDA
+#ifdef BARICUDA
   block->valve_pressure = ValvePressure;
   block->e_to_p_pressure = EtoPPressure;
-  #endif
+#endif
 
   block->direction_bits = 0;
 
@@ -1181,7 +1183,7 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
   {
     block->direction_bits |= (1<<E_AXIS);
   }
-  
+
   block->active_extruder = extruder;
 
   //enable active axes
@@ -1190,7 +1192,7 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
     enable_y();
     enable_z();
   }
-  
+
 
 
   // Enable all
@@ -1211,13 +1213,13 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
   }
 
   float delta_mm[4];
-  #ifndef COREXY
-    delta_mm[X_AXIS] = (target[X_AXIS]-position[X_AXIS])/axis_steps_per_unit[X_AXIS];
-    delta_mm[Y_AXIS] = (target[Y_AXIS]-position[Y_AXIS])/axis_steps_per_unit[Y_AXIS];
-  #else
-    delta_mm[X_AXIS] = ((target[X_AXIS]-position[X_AXIS]) + (target[Y_AXIS]-position[Y_AXIS]))/axis_steps_per_unit[X_AXIS];
-    delta_mm[Y_AXIS] = ((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-position[Y_AXIS]))/axis_steps_per_unit[Y_AXIS];
-  #endif
+#ifndef COREXY
+  delta_mm[X_AXIS] = (target[X_AXIS]-position[X_AXIS])/axis_steps_per_unit[X_AXIS];
+  delta_mm[Y_AXIS] = (target[Y_AXIS]-position[Y_AXIS])/axis_steps_per_unit[Y_AXIS];
+#else
+  delta_mm[X_AXIS] = ((target[X_AXIS]-position[X_AXIS]) + (target[Y_AXIS]-position[Y_AXIS]))/axis_steps_per_unit[X_AXIS];
+  delta_mm[Y_AXIS] = ((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-position[Y_AXIS]))/axis_steps_per_unit[Y_AXIS];
+#endif
   delta_mm[Z_AXIS] = (target[Z_AXIS]-position[Z_AXIS])/axis_steps_per_unit[Z_AXIS];
   delta_mm[E_AXIS] = ((target[E_AXIS]-position[E_AXIS])/axis_steps_per_unit[E_AXIS])*extrudemultiply[extruder]/100.0;
   if ( block->steps_x <=dropsegments && block->steps_y <=dropsegments && block->steps_z <=dropsegments )
@@ -1228,9 +1230,9 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
   {
     block->millimeters = sqrt(square(delta_mm[X_AXIS]) + square(delta_mm[Y_AXIS]) + square(delta_mm[Z_AXIS]));
   }
-  float inverse_millimeters = 1.0/block->millimeters;  // Inverse millimeters to remove multiple divides
+  float inverse_millimeters = 1.0/block->millimeters;   // Inverse millimeters to remove multiple divides
 
-    // Calculate speed in mm/second for each axis. No divide by zero due to previous checks.
+  // Calculate speed in mm/second for each axis. No divide by zero due to previous checks.
   float inverse_second = feed_rate * inverse_millimeters;
 
   int moves_queued=(block_buffer_head-block_buffer_tail + BLOCK_BUFFER_SIZE) & (BLOCK_BUFFER_SIZE - 1);
@@ -1247,23 +1249,23 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
   if ((moves_queued > 1) && (moves_queued < (BLOCK_BUFFER_SIZE * 0.5)))
   {
     if (segment_time < minsegmenttime)
-    { // buffer is draining, add extra time.  The amount of time added increases if the buffer is still emptied more.
+    {     // buffer is draining, add extra time.  The amount of time added increases if the buffer is still emptied more.
       inverse_second=1000000.0/(segment_time+lround(2*(minsegmenttime-segment_time)/moves_queued));
-      #ifdef XY_FREQUENCY_LIMIT
-         segment_time = lround(1000000.0/inverse_second);
-      #endif
+  #ifdef XY_FREQUENCY_LIMIT
+      segment_time = lround(1000000.0/inverse_second);
+  #endif
     }
   }
 #endif
   //  END OF SLOW DOWN SECTION
 
 
-  block->nominal_speed = block->millimeters * inverse_second; // (mm/sec) Always > 0
-  block->nominal_rate = ceil(block->step_event_count * inverse_second); // (step/sec) Always > 0
+  block->nominal_speed = block->millimeters * inverse_second;   // (mm/sec) Always > 0
+  block->nominal_rate = ceil(block->step_event_count * inverse_second);   // (step/sec) Always > 0
 
   // Calculate and limit speed in mm/sec for each axis
   float current_speed[4];
-  float speed_factor = 1.0; //factor <=1 do decrease speed
+  float speed_factor = 1.0;   //factor <=1 do decrease speed
   for(int i=0; i < 4; i++)
   {
     current_speed[i] = delta_mm[i] * inverse_second;
@@ -1273,7 +1275,7 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
 
   // Max segement time in us.
 #ifdef XY_FREQUENCY_LIMIT
-#define MAX_FREQ_TIME (1000000.0/XY_FREQUENCY_LIMIT)
+  #define MAX_FREQ_TIME (1000000.0/XY_FREQUENCY_LIMIT)
   // Check and limit the xy direction change frequency
   unsigned char direction_change = block->direction_bits ^ old_direction_bits;
   old_direction_bits = block->direction_bits;
@@ -1321,11 +1323,11 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
   float steps_per_mm = block->step_event_count/block->millimeters;
   if(block->steps_x == 0 && block->steps_y == 0 && block->steps_z == 0)
   {
-    block->acceleration_st = ceil(retract_acceleration * steps_per_mm); // convert to: acceleration steps/sec^2
+    block->acceleration_st = ceil(retract_acceleration * steps_per_mm);     // convert to: acceleration steps/sec^2
   }
   else
   {
-    block->acceleration_st = ceil(acceleration * steps_per_mm); // convert to: acceleration steps/sec^2
+    block->acceleration_st = ceil(acceleration * steps_per_mm);     // convert to: acceleration steps/sec^2
     // Limit acceleration per axis
     if(((float)block->acceleration_st * (float)block->steps_x / (float)block->step_event_count) > axis_steps_per_sqr_second[X_AXIS])
       block->acceleration_st = axis_steps_per_sqr_second[X_AXIS];
@@ -1340,7 +1342,7 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
   block->acceleration_rate = (long)((float)block->acceleration_st * (16777216.0 / (F_CPU / 8.0)));
 
 #if 0  // Use old jerk for now
-  // Compute path unit vector
+       // Compute path unit vector
   double unit_vec[3];
 
   unit_vec[X_AXIS] = delta_mm[X_AXIS]*inverse_millimeters;
@@ -1356,15 +1358,15 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
   // path width or max_jerk in the previous grbl version. This approach does not actually deviate
   // from path, but used as a robust way to compute cornering speeds, as it takes into account the
   // nonlinearities of both the junction angle and junction velocity.
-  double vmax_junction = MINIMUM_PLANNER_SPEED; // Set default max junction speed
+  double vmax_junction = MINIMUM_PLANNER_SPEED;   // Set default max junction speed
 
   // Skip first block or when previous_nominal_speed is used as a flag for homing and offset cycles.
   if ((block_buffer_head != block_buffer_tail) && (previous_nominal_speed > 0.0)) {
     // Compute cosine of angle between previous and current path. (prev_unit_vec is negative)
     // NOTE: Max junction velocity is computed without sin() or acos() by trig half angle identity.
-    double cos_theta = - previous_unit_vec[X_AXIS] * unit_vec[X_AXIS]
-      - previous_unit_vec[Y_AXIS] * unit_vec[Y_AXIS]
-      - previous_unit_vec[Z_AXIS] * unit_vec[Z_AXIS] ;
+    double cos_theta = -previous_unit_vec[X_AXIS] * unit_vec[X_AXIS]
+                       - previous_unit_vec[Y_AXIS] * unit_vec[Y_AXIS]
+                       - previous_unit_vec[Z_AXIS] * unit_vec[Z_AXIS];
 
     // Skip and use default max junction speed for 0 degree acute junction.
     if (cos_theta < 0.95) {
@@ -1372,9 +1374,9 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
       // Skip and avoid divide by zero for straight junctions at 180 degrees. Limit to min() of nominal speeds.
       if (cos_theta > -0.95) {
         // Compute maximum junction velocity based on maximum acceleration and junction deviation
-        double sin_theta_d2 = sqrt(0.5*(1.0-cos_theta)); // Trig half angle identity. Always positive.
+        double sin_theta_d2 = sqrt(0.5*(1.0-cos_theta));         // Trig half angle identity. Always positive.
         vmax_junction = min(vmax_junction,
-        sqrt(block->acceleration * junction_deviation * sin_theta_d2/(1.0-sin_theta_d2)) );
+                            sqrt(block->acceleration * junction_deviation * sin_theta_d2/(1.0-sin_theta_d2)) );
       }
     }
   }
@@ -1396,14 +1398,14 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
     //    }
     if (xy_jerk > max_xy_jerk) {
       vmax_junction_factor = (max_xy_jerk/xy_jerk);
-    } 
-//    if(fabs(current_speed[Z_AXIS] - previous_speed[Z_AXIS]) > max_z_jerk) {
-//      vmax_junction_factor= min(vmax_junction_factor, (max_z_jerk/fabs(current_speed[Z_AXIS] - previous_speed[Z_AXIS])));
-//    } 
+    }
+    //    if(fabs(current_speed[Z_AXIS] - previous_speed[Z_AXIS]) > max_z_jerk) {
+    //      vmax_junction_factor= min(vmax_junction_factor, (max_z_jerk/fabs(current_speed[Z_AXIS] - previous_speed[Z_AXIS])));
+    //    }
     if(fabs(current_speed[E_AXIS] - previous_speed[E_AXIS]) > max_e_jerk) {
       vmax_junction_factor = min(vmax_junction_factor, (max_e_jerk/fabs(current_speed[E_AXIS] - previous_speed[E_AXIS])));
     }
-    vmax_junction = min(previous_nominal_speed, vmax_junction * vmax_junction_factor); // Limit speed to max previous speed
+    vmax_junction = min(previous_nominal_speed, vmax_junction * vmax_junction_factor);     // Limit speed to max previous speed
   }
   block->max_entry_speed = vmax_junction;
 
@@ -1425,10 +1427,10 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
   else {
     block->nominal_length_flag = false;
   }
-  block->recalculate_flag = true; // Always calculate trapezoid for new block
+  block->recalculate_flag = true;   // Always calculate trapezoid for new block
 
   // Update previous path unit_vector and nominal speed
-  memcpy(previous_speed, current_speed, sizeof(previous_speed)); // previous_speed[] = current_speed[]
+  memcpy(previous_speed, current_speed, sizeof(previous_speed));   // previous_speed[] = current_speed[]
   previous_nominal_speed = block->nominal_speed;
 
 
@@ -1441,7 +1443,7 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
   else {
     long acc_dist = estimate_acceleration_distance(0, block->nominal_rate, block->acceleration_st);
     float advance = (STEPS_PER_CUBIC_MM_E * EXTRUDER_ADVANCE_K) *
-      (current_speed[E_AXIS] * current_speed[E_AXIS] * EXTRUTION_AREA * EXTRUTION_AREA)*256;
+                    (current_speed[E_AXIS] * current_speed[E_AXIS] * EXTRUTION_AREA * EXTRUTION_AREA)*256;
     block->advance = advance;
     if(acc_dist == 0) {
       block->advance_rate = 0;
@@ -1451,206 +1453,206 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
     }
   }
   /*
-    SERIAL_ECHO_START;
-   SERIAL_ECHOPGM("advance :");
-   SERIAL_ECHO(block->advance/256.0);
-   SERIAL_ECHOPGM("advance rate :");
-   SERIAL_ECHOLN(block->advance_rate/256.0);
+     SERIAL_ECHO_START;
+     SERIAL_ECHOPGM("advance :");
+     SERIAL_ECHO(block->advance/256.0);
+     SERIAL_ECHOPGM("advance rate :");
+     SERIAL_ECHOLN(block->advance_rate/256.0);
    */
 #endif // ADVANCE
 
-  
+
   unsigned short moveFraction;
-  
+
   unsigned long radicand= sq(target[X_AXIS]-position[X_AXIS])+sq(target[Y_AXIS]-position[Y_AXIS]);
-  
-  
+
+
   Sqrt32(moveFraction, radicand);
-  
+
   moveFraction>>=7;   //moveFraction/128 ~= 2mm
-  
-  
-//  SERIAL_ECHOLN(target_raw[X_AXIS]);
-  
+
+
+  //  SERIAL_ECHOLN(target_raw[X_AXIS]);
+
   if (moveFraction) {
-    
+
 
     char powerOfTwo=0;
-    
+
     while (moveFraction) {
       moveFraction>>=1;
       powerOfTwo++;
     }
     moveFraction=1<<powerOfTwo;
-    
+
     inverse_second*=moveFraction;
-    
+
     long difference[4];
     long differenceSum[4];
     long stepERaw=0;
     long lastStepERaw=0;
-    
+
     memset(differenceSum, 0, sizeof(differenceSum));
-    
+
     for (int k=0; k<3; k++) {
       difference[k]=target[k]-position[k];
     }
     difference[E_AXIS]=block->steps_e;
-//    SERIAL_ECHOLNPGM("difference_e");
-//    SERIAL_ECHOLN(target[E_AXIS]);
-//    SERIAL_ECHOLN(position[E_AXIS]);
-//    SERIAL_ECHOLN(difference[E_AXIS]);
-    
-    
+    //    SERIAL_ECHOLNPGM("difference_e");
+    //    SERIAL_ECHOLN(target[E_AXIS]);
+    //    SERIAL_ECHOLN(position[E_AXIS]);
+    //    SERIAL_ECHOLN(difference[E_AXIS]);
+
+
     block->millimeters/=moveFraction;
-    
-//    SERIAL_ECHOLNPGM("target_origin");
-//    SERIAL_ECHOLN(target[X_AXIS]);
-//    SERIAL_ECHOLN(target[Y_AXIS]);
-//    SERIAL_ECHOLN(target[Z_AXIS]);
-//    
-//    SERIAL_ECHOLNPGM("position_origin");
-//    SERIAL_ECHOLN(position[X_AXIS]);
-//    SERIAL_ECHOLN(position[Y_AXIS]);
-//    SERIAL_ECHOLN(position[Z_AXIS]);
-    
-    
-    
-    
+
+    //    SERIAL_ECHOLNPGM("target_origin");
+    //    SERIAL_ECHOLN(target[X_AXIS]);
+    //    SERIAL_ECHOLN(target[Y_AXIS]);
+    //    SERIAL_ECHOLN(target[Z_AXIS]);
+    //
+    //    SERIAL_ECHOLNPGM("position_origin");
+    //    SERIAL_ECHOLN(position[X_AXIS]);
+    //    SERIAL_ECHOLN(position[Y_AXIS]);
+    //    SERIAL_ECHOLN(position[Z_AXIS]);
+
+
+
+
     for (unsigned short step=0; step<moveFraction; step++) {
       for (int l=0; l<3; l++) {
         differenceSum[l]+=difference[l];
         target[l]=position[l]+(differenceSum[l]>>powerOfTwo);
       }
-      
-//      SERIAL_ECHOLNPGM("target");
-//      SERIAL_ECHOLN(target[X_AXIS]);
-//      SERIAL_ECHOLN(target[Y_AXIS]);
-//      SERIAL_ECHOLN(target[Z_AXIS]);
-//      
-//      SERIAL_ECHOLNPGM("position");
-//      SERIAL_ECHOLN(position[X_AXIS]);
-//      SERIAL_ECHOLN(position[Y_AXIS]);
-//      SERIAL_ECHOLN(position[Z_AXIS]);
-      
-      
+
+      //      SERIAL_ECHOLNPGM("target");
+      //      SERIAL_ECHOLN(target[X_AXIS]);
+      //      SERIAL_ECHOLN(target[Y_AXIS]);
+      //      SERIAL_ECHOLN(target[Z_AXIS]);
+      //
+      //      SERIAL_ECHOLNPGM("position");
+      //      SERIAL_ECHOLN(position[X_AXIS]);
+      //      SERIAL_ECHOLN(position[Y_AXIS]);
+      //      SERIAL_ECHOLN(position[Z_AXIS]);
+
+
       calculate_delta_long(target_raw, target);
-      
-      
-//      SERIAL_ECHOLNPGM("target_raw");
-//      SERIAL_ECHOLN(target_raw[X_AXIS]);
-//      SERIAL_ECHOLN(target_raw[Y_AXIS]);
-//      SERIAL_ECHOLN(target_raw[Z_AXIS]);
-//      
-//      SERIAL_ECHOLNPGM("position");
-//      SERIAL_ECHOLN(position_raw[X_AXIS]);
-//      SERIAL_ECHOLN(position_raw[Y_AXIS]);
-//      SERIAL_ECHOLN(position_raw[Z_AXIS]);
-      
-      
+
+
+      //      SERIAL_ECHOLNPGM("target_raw");
+      //      SERIAL_ECHOLN(target_raw[X_AXIS]);
+      //      SERIAL_ECHOLN(target_raw[Y_AXIS]);
+      //      SERIAL_ECHOLN(target_raw[Z_AXIS]);
+      //
+      //      SERIAL_ECHOLNPGM("position");
+      //      SERIAL_ECHOLN(position_raw[X_AXIS]);
+      //      SERIAL_ECHOLN(position_raw[Y_AXIS]);
+      //      SERIAL_ECHOLN(position_raw[Z_AXIS]);
+
+
       // default non-h-bot planning
       block->steps_x = target_raw[X_AXIS]-position_raw[X_AXIS];
       block->steps_y = target_raw[Y_AXIS]-position_raw[Y_AXIS];
       block->steps_z = target_raw[Z_AXIS]-position_raw[Z_AXIS];
-    
-      
+
+
       differenceSum[E_AXIS]+=difference[E_AXIS];
-      
+
       stepERaw = differenceSum[E_AXIS]>>powerOfTwo;
-      
+
       block->steps_e = stepERaw - lastStepERaw;
-      
+
       lastStepERaw = stepERaw;
-      
-//      SERIAL_ECHOLNPGM("steps_e:");
-//      SERIAL_ECHOLN(differenceSum[E_AXIS]);
-//      SERIAL_ECHOLN(block->steps_e );
-//      SERIAL_ECHOLN(target[E_AXIS]);
-//      SERIAL_ECHOLN(position[E_AXIS]);
-      
-      
+
+      //      SERIAL_ECHOLNPGM("steps_e:");
+      //      SERIAL_ECHOLN(differenceSum[E_AXIS]);
+      //      SERIAL_ECHOLN(block->steps_e );
+      //      SERIAL_ECHOLN(target[E_AXIS]);
+      //      SERIAL_ECHOLN(position[E_AXIS]);
+
+
       // Compute direction bits for this block
       block->direction_bits &= ~(unsigned char)((1<<X_AXIS)|(1<<Y_AXIS)|(1<<Z_AXIS));
-      
+
       if (block->steps_x < 0)
       {
-        #ifdef DirectionOffsetX
+#ifdef DirectionOffsetX
         if (moveDirection[X_AXIS] == true) {
           block->steps_x -= DirectionOffsetX;
           moveDirection[X_AXIS]=false;
         }
-        #endif
-        
+#endif
+
         block->direction_bits |= (1<<X_AXIS);
         block->steps_x=-block->steps_x;
       }
-      #ifdef DirectionOffsetX
-      else if (block->steps_x > 0){
+#ifdef DirectionOffsetX
+      else if (block->steps_x > 0) {
         if (moveDirection[X_AXIS] == false) {
           block->steps_x += DirectionOffsetX;
           moveDirection[X_AXIS]=true;
         }
       }
-      #endif
-      
+#endif
+
       if (block->steps_y < 0)
       {
-        #ifdef DirectionOffsetX
+#ifdef DirectionOffsetX
         if (moveDirection[Y_AXIS] == true) {
           block->steps_y -= DirectionOffsetY;
           moveDirection[Y_AXIS]=false;
         }
-        #endif
+#endif
         block->direction_bits |= (1<<Y_AXIS);
         block->steps_y=-block->steps_y;
       }
-      #ifdef DirectionOffsetX
-      else if(block->steps_y > 0){
+#ifdef DirectionOffsetX
+      else if(block->steps_y > 0) {
         if (moveDirection[Y_AXIS] == false) {
           block->steps_y += DirectionOffsetY;
           moveDirection[Y_AXIS]=true;
         }
       }
-      #endif
+#endif
       if (block->steps_z < 0)
       {
-        #ifdef DirectionOffsetX
+#ifdef DirectionOffsetX
         if (moveDirection[Z_AXIS] == true) {
           block->steps_z -= DirectionOffsetZ;
           moveDirection[Z_AXIS]=false;
         }
-        #endif
+#endif
         block->direction_bits |= (1<<Z_AXIS);
         block->steps_z=-block->steps_z;
       }
-      #ifdef DirectionOffsetX
-      else if (block->steps_z > 0){
+#ifdef DirectionOffsetX
+      else if (block->steps_z > 0) {
         if (moveDirection[Z_AXIS] == false) {
           block->steps_z += DirectionOffsetZ;
           moveDirection[Z_AXIS]=true;
         }
       }
-      #endif
-      
+#endif
+
       block->step_event_count = max(block->steps_x, max(block->steps_y, max(block->steps_z, block->steps_e)));
-      
-     
-      block->nominal_rate = ceil(block->step_event_count * inverse_second *speed_factor); // (step/sec) Always > 0
-      
+
+
+      block->nominal_rate = ceil(block->step_event_count * inverse_second *speed_factor);       // (step/sec) Always > 0
+
 
       calculate_trapezoid_for_block(block, block->entry_speed/block->nominal_speed, safe_speed/block->nominal_speed);
-      
 
-      
+
+
       memcpy(block_next, block, sizeof(block_t));
-      
+
       if (step==0) {
         block_next->max_entry_speed = block_next->nominal_speed;
-        
+
         // Initialize block entry speed. Compute based on deceleration to user-defined MINIMUM_PLANNER_SPEED.
         v_allowable = max_allowable_speed(-block_next->acceleration,MINIMUM_PLANNER_SPEED,block_next->millimeters);
         block_next->entry_speed = min(block_next->nominal_speed, v_allowable);
-        
+
         // Initialize planner efficiency flags
         // Set flag if block will always reach maximum junction speed regardless of entry/exit speeds.
         // If a block can de/ac-celerate from nominal speed to zero within the length of the block, then
@@ -1662,25 +1664,25 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
         if (block_next->nominal_speed <= v_allowable) {
           block_next->nominal_length_flag = true;
         }
-        else { 
+        else {
           block_next->nominal_length_flag = false;
         }
-          
-//          
-//          SERIAL_ECHOLNPGM("nominal_length_flag");
-//          SERIAL_ECHOLN((int)block_next->nominal_length_flag);
+
+        //
+        //          SERIAL_ECHOLNPGM("nominal_length_flag");
+        //          SERIAL_ECHOLN((int)block_next->nominal_length_flag);
       }
-      
+
       // Move buffer head
       block_buffer_head = next_buffer_head;
-      
+
       planner_recalculate();
-      
+
       memcpy(position_raw, target_raw, sizeof(target_raw));
-      
+
       // Calculate the buffer head after we push this byte
       next_buffer_head = next_block_index(block_buffer_head);
-      
+
       // If the buffer is full: good! That means we are well ahead of the robot.
       // Rest here until there is room in the buffer.
       while(block_buffer_tail == next_buffer_head)
@@ -1689,147 +1691,148 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
         manage_inactivity();
         lcd_update();
       }
-        
-//      if ((step&0x03)==0) {
-//          manage_heater();
-////          manage_inactivity();
-//          lcd_update();
-//      }
-      
-      
+
+      //      if ((step&0x03)==0) {
+      //          manage_heater();
+      ////          manage_inactivity();
+      //          lcd_update();
+      //      }
+
+
       block = &block_buffer[block_buffer_head];
       block_next = &block_buffer[next_buffer_head];
-      
-      
+
+
     }
-    
-    
-    
+
+
+
   }
   else{
-//    calculate_delta_long(target_raw, target);
-//    
-//    // default non-h-bot planning
+    //    calculate_delta_long(target_raw, target);
+    //
+    //    // default non-h-bot planning
     block->steps_x = target_raw[X_AXIS]-position_raw[X_AXIS];
     block->steps_y = target_raw[Y_AXIS]-position_raw[Y_AXIS];
     block->steps_z = target_raw[Z_AXIS]-position_raw[Z_AXIS];
-    
+
     // Compute direction bits for this block
     block->direction_bits &= ~(unsigned char)((1<<X_AXIS)|(1<<Y_AXIS)|(1<<Z_AXIS));
-    
+
     if (block->steps_x < 0)
     {
-      #ifdef DirectionOffsetX
+#ifdef DirectionOffsetX
       if (moveDirection[X_AXIS] == true) {
         block->steps_x -= DirectionOffsetX;
         moveDirection[X_AXIS]=false;
       }
-      #endif
-      
+#endif
+
       block->direction_bits |= (1<<X_AXIS);
       block->steps_x=-block->steps_x;
     }
-    #ifdef DirectionOffsetX
-    else if(block->steps_x > 0){
+#ifdef DirectionOffsetX
+    else if(block->steps_x > 0) {
       if (moveDirection[X_AXIS] == false) {
         block->steps_x += DirectionOffsetX;
         moveDirection[X_AXIS]=true;
       }
     }
-    #endif
+#endif
     if (block->steps_y < 0)
     {
-      #ifdef DirectionOffsetX
+#ifdef DirectionOffsetX
       if (moveDirection[Y_AXIS] == true) {
         block->steps_y -= DirectionOffsetY;
         moveDirection[Y_AXIS]=false;
       }
-      #endif
+#endif
       block->direction_bits |= (1<<Y_AXIS);
       block->steps_y=-block->steps_y;
     }
-    #ifdef DirectionOffsetX
-    else if (block->steps_y > 0){
+#ifdef DirectionOffsetX
+    else if (block->steps_y > 0) {
       if (moveDirection[Y_AXIS] == false) {
         block->steps_y += DirectionOffsetY;
         moveDirection[Y_AXIS]=true;
       }
     }
-    #endif
+#endif
     if (block->steps_z < 0)
     {
-      #ifdef DirectionOffsetX
+#ifdef DirectionOffsetX
       if (moveDirection[Z_AXIS] == true) {
         block->steps_z -= DirectionOffsetZ;
         moveDirection[Z_AXIS]=false;
       }
-      #endif
+#endif
       block->direction_bits |= (1<<Z_AXIS);
       block->steps_z=-block->steps_z;
     }
-    #ifdef DirectionOffsetX
-    else if (block->steps_z > 0){
+#ifdef DirectionOffsetX
+    else if (block->steps_z > 0) {
       if (moveDirection[Z_AXIS] == false) {
         block->steps_z += DirectionOffsetZ;
         moveDirection[Z_AXIS]=true;
       }
     }
-    #endif
+#endif
     block->step_event_count = max(block->steps_x, max(block->steps_y, max(block->steps_z, block->steps_e)));
-    
+
     calculate_trapezoid_for_block(block, block->entry_speed/block->nominal_speed, safe_speed/block->nominal_speed);
-    
+
     // Move buffer head
     block_buffer_head = next_buffer_head;
-    
+
     planner_recalculate();
-    
+
     memcpy(position_raw, target_raw, sizeof(target_raw));
 
   }
-  
+
 
   // Update position
-  memcpy(position, target, sizeof(target)); // position[] = target[]
+  memcpy(position, target, sizeof(target));   // position[] = target[]
 
-  
-//  switch (powerOnDemandState) {
-//    case PowerOnDemandSleeping:
-//      powerOnDemandState=PowerOnDemandStarting;
-//      powerOnDemandTimer=millis();
-//      newPowerWakeUp();
-//      break;
-//    case PowerOnDemandStopping:
-//      powerOnDemandState=PowerOnDemandWorking;
-//      break;
-//    default:
-//      break;
-//  }
-  
+
+  //  switch (powerOnDemandState) {
+  //    case PowerOnDemandSleeping:
+  //      powerOnDemandState=PowerOnDemandStarting;
+  //      powerOnDemandTimer=millis();
+  //      newPowerWakeUp();
+  //      break;
+  //    case PowerOnDemandStopping:
+  //      powerOnDemandState=PowerOnDemandWorking;
+  //      break;
+  //    default:
+  //      break;
+  //  }
+
 }
 
 void plan_set_position(const float &x, const float &y, const float &z, const float &e)
 {
-  float plainFactorZBuffer = z*plainFactorCAC -x*plainFactorAAC;
-  
-  position[X_AXIS] = lround((z*plainFactorAAC+x*plainFactorCAC)*axis_steps_per_unit[X_AXIS]);
-  position[Y_AXIS] = lround((y*plainFactorCBC-plainFactorZBuffer*plainFactorBBC)*axis_steps_per_unit[Y_AXIS]);
-  position[Z_AXIS] = lround((y*plainFactorBBC+plainFactorZBuffer*plainFactorCBC)*axis_steps_per_unit[Z_AXIS]);
+
+  float plainFactorZBuffer = z- z*plainFactorCAC -x*plainFactorAAC;
+
+  position[X_AXIS] = lround((z*plainFactorAAC+x-x*plainFactorCAC)*axis_steps_per_unit[X_AXIS]);
+  position[Y_AXIS] = lround((y- y*plainFactorCBC-plainFactorZBuffer*plainFactorBBC)*axis_steps_per_unit[Y_AXIS]);
+  position[Z_AXIS] = lround((y*plainFactorBBC+plainFactorZBuffer-plainFactorZBuffer*plainFactorCBC)*axis_steps_per_unit[Z_AXIS]);
   position[E_AXIS] = lround(e*axis_steps_per_unit[E_AXIS]*volume_to_filament_length[active_extruder]);
-  
+
   calculate_delta_long(position_raw, position);
   st_set_position(position_raw[X_AXIS], position_raw[Y_AXIS], position_raw[Z_AXIS], position[E_AXIS]);
-  
-  previous_nominal_speed = 0.0; // Resets planner junction speeds. Assumes start from rest.
+
+  previous_nominal_speed = 0.0;   // Resets planner junction speeds. Assumes start from rest.
   previous_speed[0] = 0.0;
   previous_speed[1] = 0.0;
   previous_speed[2] = 0.0;
   previous_speed[3] = 0.0;
-  #ifdef DirectionOffsetX
+#ifdef DirectionOffsetX
   moveDirection[0] = false;
   moveDirection[1] = false;
   moveDirection[2] = false;
-  #endif
+#endif
 }
 
 void plan_set_position_old(const float &x, const float &y, const float &z, const float &e)
@@ -1839,16 +1842,16 @@ void plan_set_position_old(const float &x, const float &y, const float &z, const
   position[Z_AXIS] = lround(z*axis_steps_per_unit[Z_AXIS]);
   position[E_AXIS] = lround(e*axis_steps_per_unit[E_AXIS]*volume_to_filament_length[active_extruder]);
   st_set_position(position[X_AXIS], position[Y_AXIS], position[Z_AXIS], position[E_AXIS]);
-  previous_nominal_speed = 0.0; // Resets planner junction speeds. Assumes start from rest.
+  previous_nominal_speed = 0.0;   // Resets planner junction speeds. Assumes start from rest.
   previous_speed[0] = 0.0;
   previous_speed[1] = 0.0;
   previous_speed[2] = 0.0;
   previous_speed[3] = 0.0;
-  #ifdef DirectionOffsetX
+#ifdef DirectionOffsetX
   moveDirection[0] = false;
   moveDirection[1] = false;
   moveDirection[2] = false;
-  #endif
+#endif
 }
 
 
@@ -1873,8 +1876,8 @@ void set_extrude_min_temp(float temp)
 // Calculate the steps/s^2 acceleration rates, based on the mm/s^s
 void reset_acceleration_rates()
 {
-	for(int8_t i=0; i < NUM_AXIS; i++)
-        {
-        axis_steps_per_sqr_second[i] = max_acceleration_units_per_sq_second[i] * axis_steps_per_unit[i];
-        }
+  for(int8_t i=0; i < NUM_AXIS; i++)
+  {
+    axis_steps_per_sqr_second[i] = max_acceleration_units_per_sq_second[i] * axis_steps_per_unit[i];
+  }
 }

@@ -34,95 +34,95 @@ static void save_lifetime_stats();
 
 void lifetime_stats_init()
 {
-    startup_millis = millis();
-    hour_save_millis = startup_millis + MILLIS_HOUR;
-    minute_counter_millis = startup_millis + MILLIS_MINUTE;
-    is_printing = false;
-    last_e_pos = current_position[E_AXIS];
+  startup_millis = millis();
+  hour_save_millis = startup_millis + MILLIS_HOUR;
+  minute_counter_millis = startup_millis + MILLIS_MINUTE;
+  is_printing = false;
+  last_e_pos = current_position[E_AXIS];
 
-    load_lifetime_stats();
+  load_lifetime_stats();
 }
 
 void lifetime_stats_tick()
 {
-    unsigned long m = millis();
+  unsigned long m = millis();
 
-    //Every minute, increase the minute counters that are active.
-    if (minute_counter_millis < m)
+  //Every minute, increase the minute counters that are active.
+  if (minute_counter_millis < m)
+  {
+    minute_counter_millis += MILLIS_MINUTE;
+
+    lifetime_minutes++;
+    triptime_minutes++;
+    if (is_printing)
     {
-        minute_counter_millis += MILLIS_MINUTE;
+      lifetime_print_minutes++;
+      triptime_print_minutes++;
 
-        lifetime_minutes++;
-        triptime_minutes++;
-        if (is_printing)
+      float diff = current_position[E_AXIS] - last_e_pos;
+      if (diff > 0 && diff < 60 * 30)
+      {
+        accumulated_e_diff += diff * volume_to_filament_length[active_extruder];
+        while(accumulated_e_diff > 10.0)
         {
-            lifetime_print_minutes++;
-            triptime_print_minutes++;
-
-            float diff = current_position[E_AXIS] - last_e_pos;
-            if (diff > 0 && diff < 60 * 30)
-            {
-                accumulated_e_diff += diff * volume_to_filament_length[active_extruder];
-                while(accumulated_e_diff > 10.0)
-                {
-                    lifetime_print_centimeters ++;
-                    triptime_print_centimeters ++;
-                    accumulated_e_diff -= 10.0;
-                }
-            }
-            last_e_pos = current_position[E_AXIS];
+          lifetime_print_centimeters++;
+          triptime_print_centimeters++;
+          accumulated_e_diff -= 10.0;
         }
+      }
+      last_e_pos = current_position[E_AXIS];
     }
+  }
 
-    //Every hour, save the data to EEPROM.
-    if (hour_save_millis < m)
-    {
-        hour_save_millis = m + MILLIS_HOUR;
-        save_lifetime_stats();
-    }
+  //Every hour, save the data to EEPROM.
+  if (hour_save_millis < m)
+  {
+    hour_save_millis = m + MILLIS_HOUR;
+    save_lifetime_stats();
+  }
 }
 
 void lifetime_stats_print_start()
 {
-    is_printing = true;
-    last_e_pos = current_position[E_AXIS];
-    accumulated_e_diff = 0;
+  is_printing = true;
+  last_e_pos = current_position[E_AXIS];
+  accumulated_e_diff = 0;
 }
 
 void lifetime_stats_print_end()
 {
-    is_printing = false;
-    save_lifetime_stats();
+  is_printing = false;
+  save_lifetime_stats();
 }
 
 static void load_lifetime_stats()
 {
-    unsigned long magic = eeprom_read_dword((uint32_t*)(LIFETIME_EEPROM_OFFSET + 0));
-    if (magic == LIFETIME_MAGIC)
-    {
-        lifetime_minutes = eeprom_read_dword((uint32_t*)(LIFETIME_EEPROM_OFFSET + 4));
-        lifetime_print_minutes = eeprom_read_dword((uint32_t*)(LIFETIME_EEPROM_OFFSET + 8));
-        lifetime_print_centimeters = eeprom_read_dword((uint32_t*)(LIFETIME_EEPROM_OFFSET + 12));
-        triptime_minutes = eeprom_read_dword((uint32_t*)(LIFETIME_EEPROM_OFFSET + 16));
-        triptime_print_minutes = eeprom_read_dword((uint32_t*)(LIFETIME_EEPROM_OFFSET + 20));
-        triptime_print_centimeters = eeprom_read_dword((uint32_t*)(LIFETIME_EEPROM_OFFSET + 24));
-    }else{
-        lifetime_minutes = 0;
-        lifetime_print_minutes = 0;
-        lifetime_print_centimeters = 0;
-        triptime_minutes = 0;
-        triptime_print_minutes = 0;
-        triptime_print_centimeters = 0;
-    }
+  unsigned long magic = eeprom_read_dword((uint32_t*)(LIFETIME_EEPROM_OFFSET + 0));
+  if (magic == LIFETIME_MAGIC)
+  {
+    lifetime_minutes = eeprom_read_dword((uint32_t*)(LIFETIME_EEPROM_OFFSET + 4));
+    lifetime_print_minutes = eeprom_read_dword((uint32_t*)(LIFETIME_EEPROM_OFFSET + 8));
+    lifetime_print_centimeters = eeprom_read_dword((uint32_t*)(LIFETIME_EEPROM_OFFSET + 12));
+    triptime_minutes = eeprom_read_dword((uint32_t*)(LIFETIME_EEPROM_OFFSET + 16));
+    triptime_print_minutes = eeprom_read_dword((uint32_t*)(LIFETIME_EEPROM_OFFSET + 20));
+    triptime_print_centimeters = eeprom_read_dword((uint32_t*)(LIFETIME_EEPROM_OFFSET + 24));
+  }else{
+    lifetime_minutes = 0;
+    lifetime_print_minutes = 0;
+    lifetime_print_centimeters = 0;
+    triptime_minutes = 0;
+    triptime_print_minutes = 0;
+    triptime_print_centimeters = 0;
+  }
 }
 
 static void save_lifetime_stats()
 {
-    eeprom_write_dword((uint32_t*)(LIFETIME_EEPROM_OFFSET + 0), LIFETIME_MAGIC);
-    eeprom_write_dword((uint32_t*)(LIFETIME_EEPROM_OFFSET + 4), lifetime_minutes);
-    eeprom_write_dword((uint32_t*)(LIFETIME_EEPROM_OFFSET + 8), lifetime_print_minutes);
-    eeprom_write_dword((uint32_t*)(LIFETIME_EEPROM_OFFSET + 12), lifetime_print_centimeters);
-    eeprom_write_dword((uint32_t*)(LIFETIME_EEPROM_OFFSET + 16), triptime_minutes);
-    eeprom_write_dword((uint32_t*)(LIFETIME_EEPROM_OFFSET + 20), triptime_print_minutes);
-    eeprom_write_dword((uint32_t*)(LIFETIME_EEPROM_OFFSET + 24), triptime_print_centimeters);
+  eeprom_write_dword((uint32_t*)(LIFETIME_EEPROM_OFFSET + 0), LIFETIME_MAGIC);
+  eeprom_write_dword((uint32_t*)(LIFETIME_EEPROM_OFFSET + 4), lifetime_minutes);
+  eeprom_write_dword((uint32_t*)(LIFETIME_EEPROM_OFFSET + 8), lifetime_print_minutes);
+  eeprom_write_dword((uint32_t*)(LIFETIME_EEPROM_OFFSET + 12), lifetime_print_centimeters);
+  eeprom_write_dword((uint32_t*)(LIFETIME_EEPROM_OFFSET + 16), triptime_minutes);
+  eeprom_write_dword((uint32_t*)(LIFETIME_EEPROM_OFFSET + 20), triptime_print_minutes);
+  eeprom_write_dword((uint32_t*)(LIFETIME_EEPROM_OFFSET + 24), triptime_print_centimeters);
 }

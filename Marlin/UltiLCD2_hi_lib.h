@@ -8,18 +8,8 @@ typedef void (*menuFunc_t)();
 typedef char* (*entryNameCallback_t)(uint8_t nr);
 typedef void (*entryDetailsCallback_t)(uint8_t nr);
 
-#ifdef PushButton
 #define ENCODER_TICKS_PER_MAIN_MENU_ITEM 1
 #define ENCODER_TICKS_PER_SCROLL_MENU_ITEM 1
-
-
-#else
-
-#define ENCODER_TICKS_PER_MAIN_MENU_ITEM 8
-#define ENCODER_TICKS_PER_SCROLL_MENU_ITEM 4
-#define ENCODER_NO_SELECTION (ENCODER_TICKS_PER_MAIN_MENU_ITEM * -11)
-
-#endif
 #define MAIN_MENU_ITEM_POS(n)  (ENCODER_TICKS_PER_MAIN_MENU_ITEM * (n) + ENCODER_TICKS_PER_MAIN_MENU_ITEM / 2)
 #define SCROLL_MENU_ITEM_POS(n)  (ENCODER_TICKS_PER_SCROLL_MENU_ITEM * (n) + ENCODER_TICKS_PER_SCROLL_MENU_ITEM / 2)
 #define SELECT_MAIN_MENU_ITEM(n)  do { lcd_lib_encoder_pos = MAIN_MENU_ITEM_POS(n); } while(0)
@@ -41,7 +31,6 @@ void lcd_info_screen(menuFunc_t cancelMenu, menuFunc_t callbackOnCancel = NULL, 
 void lcd_question_screen(menuFunc_t optionAMenu, menuFunc_t callbackOnA, const char* AButtonText, menuFunc_t optionBMenu, menuFunc_t callbackOnB, const char* BButtonText, uint8_t directionA=MenuForward, uint8_t directionB=MenuBackward);
 void lcd_scroll_menu(const char* menuNameP, int8_t entryCount, entryNameCallback_t entryNameCallback, entryDetailsCallback_t entryDetailsCallback);
 
-void lcd_scroll_central_menu(const char* menuNameP, int8_t entryCount, entryNameCallback_t entryNameCallback, entryDetailsCallback_t entryDetailsCallback);
 void lcd_draw_detail(char* pstr);
 void lcd_draw_detailP(const char* pstr);
 void lcd_normal_menu(const char* menuNameP, int8_t entryCount, entryNameCallback_t entryNameCallback, entryDetailsCallback_t entryDetailsCallback);
@@ -67,75 +56,75 @@ extern uint8_t minProgress;
 extern unsigned long menuTimer;
 
 #define LCD_EDIT_SETTING(_setting, _name, _postfix, _min, _max) do { \
-            lcd_change_to_menu(lcd_menu_edit_setting, _setting); \
-            lcd_setting_name = PSTR(_name); \
-            lcd_setting_postfix = PSTR(_postfix); \
-            lcd_setting_ptr = &_setting; \
-            lcd_setting_type = sizeof(_setting); \
-            lcd_setting_min = _min; \
-            lcd_setting_max = _max; \
-            lcd_lib_button_up_down_reversed = true;\
-        } while(0)
+    lcd_change_to_menu(lcd_menu_edit_setting, _setting); \
+    lcd_setting_name = (_name); \
+    lcd_setting_postfix = (_postfix); \
+    lcd_setting_ptr = &_setting; \
+    lcd_setting_type = sizeof(_setting); \
+    lcd_setting_min = _min; \
+    lcd_setting_max = _max; \
+    lcd_lib_button_up_down_reversed = true; \
+} while(0)
 #define LCD_EDIT_SETTING_STORE(_setting, _name, _postfix, _min, _max) do { \
-            lcd_change_to_menu(lcd_menu_edit_setting, _setting); \
-            lcd_setting_name = PSTR(_name); \
-            lcd_setting_postfix = PSTR(_postfix); \
-            lcd_setting_ptr = &_setting; \
-            lcd_setting_type = 9; \
-            lcd_setting_min = _min; \
-            lcd_setting_max = _max; \
-            lcd_lib_button_up_down_reversed = true;\
-            } while(0)
+    lcd_change_to_menu(lcd_menu_edit_setting, _setting); \
+    lcd_setting_name = (_name); \
+    lcd_setting_postfix = (_postfix); \
+    lcd_setting_ptr = &_setting; \
+    lcd_setting_type = 9; \
+    lcd_setting_min = _min; \
+    lcd_setting_max = _max; \
+    lcd_lib_button_up_down_reversed = true; \
+} while(0)
 #define LCD_EDIT_SETTING_BYTE_PERCENT(_setting, _name, _postfix, _min, _max) do { \
-            lcd_change_to_menu(lcd_menu_edit_setting,(lround((int(_setting) * 100) / 255.0))); \
-            lcd_setting_name = PSTR(_name); \
-            lcd_setting_postfix = PSTR(_postfix); \
-            lcd_setting_ptr = &_setting; \
-            lcd_setting_type = 5; \
-            lcd_setting_min = _min; \
-            lcd_setting_max = _max; \
-            lcd_lib_button_up_down_reversed = true;\
-        } while(0)
+    lcd_change_to_menu(lcd_menu_edit_setting,(lround((int(_setting) * 100) / 255.0))); \
+    lcd_setting_name = (_name); \
+    lcd_setting_postfix = (_postfix); \
+    lcd_setting_ptr = &_setting; \
+    lcd_setting_type = 5; \
+    lcd_setting_min = _min; \
+    lcd_setting_max = _max; \
+    lcd_lib_button_up_down_reversed = true; \
+} while(0)
 #define LCD_EDIT_SETTING_FLOAT001(_setting, _name, _postfix, _min, _max) do { \
-            lcd_change_to_menu(lcd_menu_edit_setting,((_setting) * 100.0 + 0.5)); \
-            lcd_setting_name = PSTR(_name); \
-            lcd_setting_postfix = PSTR(_postfix); \
-            lcd_setting_ptr = &_setting; \
-            lcd_setting_type = 3; \
-            lcd_setting_min = (_min) * 100; \
-            lcd_setting_max = (_max) * 100; \
-            lcd_lib_button_up_down_reversed = true;\
-        } while(0)
+    lcd_change_to_menu(lcd_menu_edit_setting,((_setting) * 100.0 + 0.5)); \
+    lcd_setting_name = (_name); \
+    lcd_setting_postfix = (_postfix); \
+    lcd_setting_ptr = &_setting; \
+    lcd_setting_type = 3; \
+    lcd_setting_min = (_min) * 100; \
+    lcd_setting_max = (_max) * 100; \
+    lcd_lib_button_up_down_reversed = true; \
+} while(0)
 #define LCD_EDIT_SETTING_FLOAT100(_setting, _name, _postfix, _min, _max) do { \
-            lcd_change_to_menu(lcd_menu_edit_setting,((_setting) / 100 + 0.5)); \
-            lcd_setting_name = PSTR(_name); \
-            lcd_setting_postfix = PSTR("00" _postfix); \
-            lcd_setting_ptr = &(_setting); \
-            lcd_setting_type = 7; \
-            lcd_setting_min = (_min) / 100 + 0.5; \
-            lcd_setting_max = (_max) / 100 + 0.5; \
-            lcd_lib_button_up_down_reversed = true;\
-        } while(0)
+    lcd_change_to_menu(lcd_menu_edit_setting,((_setting) / 100 + 0.5)); \
+    lcd_setting_name = (_name); \
+    lcd_setting_postfix = ("00" _postfix); \
+    lcd_setting_ptr = &(_setting); \
+    lcd_setting_type = 7; \
+    lcd_setting_min = (_min) / 100 + 0.5; \
+    lcd_setting_max = (_max) / 100 + 0.5; \
+    lcd_lib_button_up_down_reversed = true; \
+} while(0)
 #define LCD_EDIT_SETTING_FLOAT1(_setting, _name, _postfix, _min, _max) do { \
-            lcd_change_to_menu(lcd_menu_edit_setting,((_setting) + 0.5)); \
-            lcd_setting_name = PSTR(_name); \
-            lcd_setting_postfix = PSTR(_postfix); \
-            lcd_setting_ptr = &(_setting); \
-            lcd_setting_type = 8; \
-            lcd_setting_min = (_min) + 0.5; \
-            lcd_setting_max = (_max) + 0.5; \
-            lcd_lib_button_up_down_reversed = true;\
-        } while(0)
+    lcd_change_to_menu(lcd_menu_edit_setting,((_setting) + 0.5)); \
+    lcd_setting_name = (_name); \
+    lcd_setting_postfix = (_postfix); \
+    lcd_setting_ptr = &(_setting); \
+    lcd_setting_type = 8; \
+    lcd_setting_min = (_min) + 0.5; \
+    lcd_setting_max = (_max) + 0.5; \
+    lcd_lib_button_up_down_reversed = true; \
+} while(0)
 #define LCD_EDIT_SETTING_SPEED(_setting, _name, _postfix, _min, _max) do { \
-            lcd_change_to_menu(lcd_menu_edit_setting,((_setting) / 60 + 0.5)); \
-            lcd_setting_name = PSTR(_name); \
-            lcd_setting_postfix = PSTR(_postfix); \
-            lcd_setting_ptr = &(_setting); \
-            lcd_setting_type = 6; \
-            lcd_setting_min = (_min) / 60 + 0.5; \
-            lcd_setting_max = (_max) / 60 + 0.5; \
-            lcd_lib_button_up_down_reversed = true;\
-        } while(0)
+    lcd_change_to_menu(lcd_menu_edit_setting,((_setting) / 60 + 0.5)); \
+    lcd_setting_name = (_name); \
+    lcd_setting_postfix = (_postfix); \
+    lcd_setting_ptr = &(_setting); \
+    lcd_setting_type = 6; \
+    lcd_setting_min = (_min) / 60 + 0.5; \
+    lcd_setting_max = (_max) / 60 + 0.5; \
+    lcd_lib_button_up_down_reversed = true; \
+} while(0)
 
 
 
@@ -153,7 +142,7 @@ extern uint8_t led_glow_dir;
 #define LED_GLOW_POWERERROR() lcd_lib_led_color(35*led_glow/128, 16*led_glow/128, 2*led_glow/128)
 #define LED_ERROR() lcd_lib_led_color(255, 0, 0)
 
-
+#define LED_OFF() lcd_lib_led_color(0, 0, 0)
 
 //#define LED_GLOW_ERROR() lcd_lib_led_color(led_glow,128-led_glow,led_glow);
 

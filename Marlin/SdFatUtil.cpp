@@ -20,13 +20,13 @@
 #include "Marlin.h"
 
 #ifdef SDSUPPORT
-#include "SdFatUtil.h"
+  #include "SdFatUtil.h"
 
 //------------------------------------------------------------------------------
 /** Amount of free RAM
  * \return The number of free bytes.
  */
-extern int  __bss_end;
+extern int __bss_end;
 extern int* __brkval;
 int SdFatUtil::FreeRam() {
   int free_memory;
@@ -50,7 +50,7 @@ int SdFatUtil::FreeRam() {
  * \param[in] str Pointer to string stored in flash memory.
  */
 void SdFatUtil::print_P( PGM_P str) {
-//  for (uint8_t c; (c = pgm_read_byte(str)); str++) MYSERIAL.write(c);
+  for (uint8_t c; (c = pgm_read_byte(str)); str++) MYSERIAL.write(c);
 }
 //------------------------------------------------------------------------------
 /** %Print a string in flash memory followed by a CR/LF.
@@ -60,7 +60,7 @@ void SdFatUtil::print_P( PGM_P str) {
  */
 void SdFatUtil::println_P( PGM_P str) {
   print_P( str);
-//  MYSERIAL.println();
+  MYSERIAL.println();
 }
 //------------------------------------------------------------------------------
 /** %Print a string in flash memory to Serial.

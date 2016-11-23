@@ -20,9 +20,9 @@
 #include "Marlin.h"
 #ifdef SDSUPPORT
 
-#ifndef SdInfo_h
-#define SdInfo_h
-#include <stdint.h>
+  #ifndef SdInfo_h
+    #define SdInfo_h
+    #include <stdint.h>
 // Based on the document:
 //
 // SD Specifications
@@ -58,7 +58,7 @@ uint8_t const CMD25 = 0X19;
 /** ERASE_WR_BLK_START - sets the address of the first block to be erased */
 uint8_t const CMD32 = 0X20;
 /** ERASE_WR_BLK_END - sets the address of the last block of the continuous
-    range to be erased*/
+   range to be erased*/
 uint8_t const CMD33 = 0X21;
 /** ERASE - erase all previously selected blocks */
 uint8_t const CMD38 = 0X26;
@@ -67,10 +67,10 @@ uint8_t const CMD55 = 0X37;
 /** READ_OCR - read the OCR register of a card */
 uint8_t const CMD58 = 0X3A;
 /** SET_WR_BLK_ERASE_COUNT - Set the number of write blocks to be
-     pre-erased before writing */
+   pre-erased before writing */
 uint8_t const ACMD23 = 0X17;
 /** SD_SEND_OP_COMD - Sends host capacity support information and
-    activates the card's initialization process */
+   activates the card's initialization process */
 uint8_t const ACMD41 = 0X29;
 //------------------------------------------------------------------------------
 /** status for card in the ready state */
@@ -118,13 +118,13 @@ typedef struct CID {
   /** Manufacturing date month */
   unsigned char mdt_month : 4;
   /** Manufacturing date year low digit */
-  unsigned char mdt_year_low :4;
+  unsigned char mdt_year_low : 4;
   // byte 15
   /** not used always 1 */
   unsigned char always1 : 1;
   /** CRC7 checksum */
   unsigned char crc : 7;
-}cid_t;
+} cid_t;
 //------------------------------------------------------------------------------
 /** CSD for version 1.00 cards */
 typedef struct CSDV1 {
@@ -146,7 +146,7 @@ typedef struct CSDV1 {
   unsigned char c_size_high : 2;
   unsigned char reserved2 : 2;
   unsigned char dsr_imp : 1;
-  unsigned char read_blk_misalign :1;
+  unsigned char read_blk_misalign : 1;
   unsigned char write_blk_misalign : 1;
   unsigned char read_bl_partial : 1;
   // byte 7
@@ -154,7 +154,7 @@ typedef struct CSDV1 {
   // byte 8
   unsigned char vdd_r_curr_max : 3;
   unsigned char vdd_r_curr_min : 3;
-  unsigned char c_size_low :2;
+  unsigned char c_size_low : 2;
   // byte 9
   unsigned char c_size_mult_high : 2;
   unsigned char vdd_w_cur_max : 3;
@@ -176,7 +176,7 @@ typedef struct CSDV1 {
   unsigned char write_partial : 1;
   unsigned char write_bl_len_low : 2;
   // byte 14
-  unsigned char reserved5: 2;
+  unsigned char reserved5 : 2;
   unsigned char file_format : 2;
   unsigned char tmp_write_protect : 1;
   unsigned char perm_write_protect : 1;
@@ -186,7 +186,7 @@ typedef struct CSDV1 {
   // byte 15
   unsigned char always1 : 1;
   unsigned char crc : 7;
-}csd1_t;
+} csd1_t;
 //------------------------------------------------------------------------------
 /** CSD for version 2.00 cards */
 typedef struct CSDV2 {
@@ -212,7 +212,7 @@ typedef struct CSDV2 {
   unsigned char reserved2 : 4;
   unsigned char dsr_imp : 1;
   /** fixed to 0 */
-  unsigned char read_blk_misalign :1;
+  unsigned char read_blk_misalign : 1;
   /** fixed to 0 */
   unsigned char write_blk_misalign : 1;
   /** fixed to 0 - no partial read */
@@ -255,7 +255,7 @@ typedef struct CSDV2 {
   /** write_bl_len fixed for 512 byte blocks */
   unsigned char write_bl_len_low : 2;
   // byte 14
-  unsigned char reserved7: 2;
+  unsigned char reserved7 : 2;
   /** Do not use always 0 */
   unsigned char file_format : 2;
   unsigned char tmp_write_protect : 1;
@@ -268,13 +268,13 @@ typedef struct CSDV2 {
   unsigned char always1 : 1;
   /** checksum */
   unsigned char crc : 7;
-}csd2_t;
+} csd2_t;
 //------------------------------------------------------------------------------
 /** union of old and new style CSD register */
 union csd_t {
   csd1_t v1;
   csd2_t v2;
 };
-#endif  // SdInfo_h
+  #endif // SdInfo_h
 
 #endif

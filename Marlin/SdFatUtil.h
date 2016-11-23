@@ -20,18 +20,18 @@
 #include "Marlin.h"
 #ifdef SDSUPPORT
 
-#ifndef SdFatUtil_h
-#define SdFatUtil_h
+  #ifndef SdFatUtil_h
+    #define SdFatUtil_h
 /**
  * \file
  * \brief Useful utility functions.
  */
-#include "Marlin.h"
-#include "MarlinSerial.h"
+    #include "Marlin.h"
+    #include "MarlinSerial.h"
 /** Store and print a string in flash memory.*/
-#define PgmPrint(x) SerialPrint_P(PSTR(x))
+    #define PgmPrint(x) SerialPrint_P(PSTR(x))
 /** Store and print a string in flash memory followed by a CR/LF.*/
-#define PgmPrintln(x) SerialPrintln_P(PSTR(x))
+    #define PgmPrintln(x) SerialPrintln_P(PSTR(x))
 
 namespace SdFatUtil {
   int FreeRam();
@@ -42,7 +42,7 @@ namespace SdFatUtil {
 }
 
 using namespace SdFatUtil;  // NOLINT
-#endif  // #define SdFatUtil_h
+  #endif // #define SdFatUtil_h
 
 
 #endif

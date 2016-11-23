@@ -3,11 +3,11 @@
 
 void lcd_menu_maintenance();
 void lcd_menu_advanced_settings();
-#if TEMP_SENSOR_BED != 0
-void lcd_menu_maintenance_advanced_bed_heatup();//TODO
-#endif
+void lcd_menu_maintenance_advanced_bed_heatup();
 void manualLevelRoutine();
 void lcd_menu_advanced_version();
+void lcd_menu_maintenance_advanced_heatup();
+void lcd_menu_device();
 
 
 #define EMoveSpeed  10

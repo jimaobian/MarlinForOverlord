@@ -5,8 +5,8 @@
 
 #ifdef SoftwareAutoLevel
 
-#define NodeNum 6
-#define ADDING_Z_FOR_POSITIVE 50
+  #define NodeNum 6
+  #define ADDING_Z_FOR_POSITIVE 50
 
 extern float plainFactorA, plainFactorB, plainFactorC;
 extern float plainFactorABackUp, plainFactorBBackUp, plainFactorCBackUp;
@@ -30,7 +30,7 @@ extern bool fittingBed();
 extern void fittingBedResetBackUp();
 
 extern void fittingBedReset();
-extern bool fittingBedRaw();
+extern bool fittingBedRaw(uint8_t nodeNumber);
 
 extern void fittingBedArrayInit();
 

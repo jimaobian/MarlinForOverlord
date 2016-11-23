@@ -20,7 +20,7 @@
 #include "Marlin.h"
 
 #ifdef SDSUPPORT
-#include "SdFile.h"
+  #include "SdFile.h"
 /**  Create a file object and open it in the current working directory.
  *
  * \param[in] path A path with a valid 8.3 DOS name for a file to be opened.
@@ -54,17 +54,17 @@ int16_t SdFile::write(const void* buf, uint16_t nbyte) {
  * \param[in] b the byte to be written.
  * Use writeError to check for errors.
  */
-#if ARDUINO >= 100
+  #if ARDUINO >= 100
 size_t SdFile::write(uint8_t b)
 {
-    return SdBaseFile::write(&b, 1);
+  return SdBaseFile::write(&b, 1);
 }
-#else
+  #else
 void SdFile::write(uint8_t b)
 {
-    SdBaseFile::write(&b, 1);
+  SdBaseFile::write(&b, 1);
 }
-#endif
+  #endif
 //------------------------------------------------------------------------------
 /** Write a string to a file. Used by the Arduino Print class.
  * \param[in] str Pointer to the string.

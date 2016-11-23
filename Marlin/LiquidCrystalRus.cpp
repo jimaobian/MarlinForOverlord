@@ -14,11 +14,10 @@
 // it is a russian alphabet translation
 // except 0401 --> 0xa2 = ╗, 0451 --> 0xb5
 const PROGMEM uint8_t utf_recode[] =
-       { 0x41,0xa0,0x42,0xa1,0xe0,0x45,0xa3,0xa4,0xa5,0xa6,0x4b,0xa7,0x4d,0x48,0x4f,
-         0xa8,0x50,0x43,0x54,0xa9,0xaa,0x58,0xe1,0xab,0xac,0xe2,0xad,0xae,0x62,0xaf,0xb0,0xb1,
-         0x61,0xb2,0xb3,0xb4,0xe3,0x65,0xb6,0xb7,0xb8,0xb9,0xba,0xbb,0xbc,0xbd,0x6f,
-         0xbe,0x70,0x63,0xbf,0x79,0xe4,0x78,0xe5,0xc0,0xc1,0xe6,0xc2,0xc3,0xc4,0xc5,0xc6,0xc7
-        };
+{ 0x41,0xa0,0x42,0xa1,0xe0,0x45,0xa3,0xa4,0xa5,0xa6,0x4b,0xa7,0x4d,0x48,0x4f,
+  0xa8,0x50,0x43,0x54,0xa9,0xaa,0x58,0xe1,0xab,0xac,0xe2,0xad,0xae,0x62,0xaf,0xb0,0xb1,
+  0x61,0xb2,0xb3,0xb4,0xe3,0x65,0xb6,0xb7,0xb8,0xb9,0xba,0xbb,0xbc,0xbd,0x6f,
+  0xbe,0x70,0x63,0xbf,0x79,0xe4,0x78,0xe5,0xc0,0xc1,0xe6,0xc2,0xc3,0xc4,0xc5,0xc6,0xc7};
 
 // When the display powers up, it is configured as follows:
 //
@@ -44,34 +43,34 @@ const PROGMEM uint8_t utf_recode[] =
 
 
 LiquidCrystalRus::LiquidCrystalRus(uint8_t rs, uint8_t rw, uint8_t enable,
-			     uint8_t d0, uint8_t d1, uint8_t d2, uint8_t d3,
-			     uint8_t d4, uint8_t d5, uint8_t d6, uint8_t d7)
+                                   uint8_t d0, uint8_t d1, uint8_t d2, uint8_t d3,
+                                   uint8_t d4, uint8_t d5, uint8_t d6, uint8_t d7)
 {
   init(0, rs, rw, enable, d0, d1, d2, d3, d4, d5, d6, d7);
 }
 
 LiquidCrystalRus::LiquidCrystalRus(uint8_t rs, uint8_t enable,
-			     uint8_t d0, uint8_t d1, uint8_t d2, uint8_t d3,
-			     uint8_t d4, uint8_t d5, uint8_t d6, uint8_t d7)
+                                   uint8_t d0, uint8_t d1, uint8_t d2, uint8_t d3,
+                                   uint8_t d4, uint8_t d5, uint8_t d6, uint8_t d7)
 {
   init(0, rs, 255, enable, d0, d1, d2, d3, d4, d5, d6, d7);
 }
 
 LiquidCrystalRus::LiquidCrystalRus(uint8_t rs, uint8_t rw, uint8_t enable,
-			     uint8_t d0, uint8_t d1, uint8_t d2, uint8_t d3)
+                                   uint8_t d0, uint8_t d1, uint8_t d2, uint8_t d3)
 {
   init(1, rs, rw, enable, d0, d1, d2, d3, 0, 0, 0, 0);
 }
 
 LiquidCrystalRus::LiquidCrystalRus(uint8_t rs,  uint8_t enable,
-			     uint8_t d0, uint8_t d1, uint8_t d2, uint8_t d3)
+                                   uint8_t d0, uint8_t d1, uint8_t d2, uint8_t d3)
 {
   init(1, rs, 255, enable, d0, d1, d2, d3, 0, 0, 0, 0);
 }
 
 void LiquidCrystalRus::init(uint8_t fourbitmode, uint8_t rs, uint8_t rw, uint8_t enable,
-			 uint8_t d0, uint8_t d1, uint8_t d2, uint8_t d3,
-			 uint8_t d4, uint8_t d5, uint8_t d6, uint8_t d7)
+                            uint8_t d0, uint8_t d1, uint8_t d2, uint8_t d3,
+                            uint8_t d4, uint8_t d5, uint8_t d6, uint8_t d7)
 {
   _rs_pin = rs;
   _rw_pin = rw;
@@ -125,17 +124,17 @@ void LiquidCrystalRus::begin(uint8_t cols, uint8_t lines, uint8_t dotsize) {
   }
 
   //put the LCD into 4 bit or 8 bit mode
-  if (! (_displayfunction & LCD_8BITMODE)) {
+  if (!(_displayfunction & LCD_8BITMODE)) {
     // this is according to the hitachi HD44780 datasheet
     // figure 24, pg 46
 
     // we start in 8bit mode, try to set 4 bit mode
     writeNbits(0x03,4);
-    delayMicroseconds(4500); // wait min 4.1ms
+    delayMicroseconds(4500);     // wait min 4.1ms
 
     // second try
     writeNbits(0x03,4);
-    delayMicroseconds(4500); // wait min 4.1ms
+    delayMicroseconds(4500);     // wait min 4.1ms
 
     // third go!
     writeNbits(0x03,4);
@@ -149,7 +148,7 @@ void LiquidCrystalRus::begin(uint8_t cols, uint8_t lines, uint8_t dotsize) {
 
     // Send function set command sequence
     command(LCD_FUNCTIONSET | _displayfunction);
-    delayMicroseconds(4500);  // wait more than 4.1ms
+    delayMicroseconds(4500);     // wait more than 4.1ms
 
     // second try
     command(LCD_FUNCTIONSET | _displayfunction);
@@ -183,21 +182,21 @@ void LiquidCrystalRus::setDRAMModel(uint8_t model) {
 /********** high level commands, for the user! */
 void LiquidCrystalRus::clear()
 {
-  command(LCD_CLEARDISPLAY);  // clear display, set cursor position to zero
-  delayMicroseconds(2000);  // this command takes a long time!
+  command(LCD_CLEARDISPLAY);   // clear display, set cursor position to zero
+  delayMicroseconds(2000);   // this command takes a long time!
 }
 
 void LiquidCrystalRus::home()
 {
-  command(LCD_RETURNHOME);  // set cursor position to zero
-  delayMicroseconds(2000);  // this command takes a long time!
+  command(LCD_RETURNHOME);   // set cursor position to zero
+  delayMicroseconds(2000);   // this command takes a long time!
 }
 
 void LiquidCrystalRus::setCursor(uint8_t col, uint8_t row)
 {
   int row_offsets[] = { 0x00, 0x40, 0x14, 0x54 };
   if ( row >= _numlines ) {
-    row = _numlines-1;    // we count rows starting w/0
+    row = _numlines-1;     // we count rows starting w/0
   }
 
   command(LCD_SETDDRAMADDR | (col + row_offsets[row]));
@@ -268,7 +267,7 @@ void LiquidCrystalRus::noAutoscroll(void) {
 // Allows us to fill the first 8 CGRAM locations
 // with custom characters
 void LiquidCrystalRus::createChar(uint8_t location, uint8_t charmap[]) {
-  location &= 0x7; // we only have 8 locations 0-7
+  location &= 0x7;   // we only have 8 locations 0-7
   command(LCD_SETCGRAMADDR | (location << 3));
   for (int i=0; i<8; i++) {
     write(charmap[i]);
@@ -282,9 +281,9 @@ inline void LiquidCrystalRus::command(uint8_t value) {
 }
 
 #if defined(ARDUINO) && ARDUINO >= 100
-  size_t LiquidCrystalRus::write(uint8_t value)
+size_t LiquidCrystalRus::write(uint8_t value)
 #else
-  void   LiquidCrystalRus::write(uint8_t value)
+void LiquidCrystalRus::write(uint8_t value)
 #endif
 {
   uint8_t out_char=value;
@@ -294,21 +293,21 @@ inline void LiquidCrystalRus::command(uint8_t value) {
     if (ac>7 && ac<0x14) command(LCD_SETDDRAMADDR | (0x40+ac-8));
   }
 
-  if (value>=0x80) { // UTF-8 handling
+  if (value>=0x80) {   // UTF-8 handling
     if (value >= 0xc0) {
       utf_hi_char = value - 0xd0;
     } else {
       value &= 0x3f;
       if (!utf_hi_char && (value == 1))
-        send(0xa2,HIGH); // ╗
+        send(0xa2,HIGH);         // ╗
       else if ((utf_hi_char == 1) && (value == 0x11))
-        send(0xb5,HIGH); // ╦
+        send(0xb5,HIGH);         // ╦
       else
         send(pgm_read_byte_near(utf_recode + value + (utf_hi_char<<6) - 0x10), HIGH);
     }
   } else send(out_char, HIGH);
 #if defined(ARDUINO) && ARDUINO >= 100
-  return 1; // assume sucess
+  return 1;   // assume sucess
 #endif
 }
 
@@ -353,7 +352,7 @@ void LiquidCrystalRus::pulseEnable() {
   digitalWrite(_enable_pin, LOW);
   delayMicroseconds(1);
   digitalWrite(_enable_pin, HIGH);
-  delayMicroseconds(1);    // enable pulse must be >450ns
+  delayMicroseconds(1);   // enable pulse must be >450ns
   digitalWrite(_enable_pin, LOW);
   delayMicroseconds(100);   // commands need > 37us to settle
 }
@@ -376,10 +375,10 @@ uint8_t LiquidCrystalRus::readNbits(uint8_t n) {
   digitalWrite(_enable_pin, LOW);
   delayMicroseconds(1);
   digitalWrite(_enable_pin, HIGH);
-  delayMicroseconds(1);    // enable pulse must be >450ns
+  delayMicroseconds(1);   // enable pulse must be >450ns
 
   for (int i = 0; i < n; i++) {
-    retval |= (digitalRead(_data_pins[i]) == HIGH)?(1 << i):0;
+    retval |= (digitalRead(_data_pins[i]) == HIGH) ? (1 << i) : 0;
   }
 
   digitalWrite(_enable_pin, LOW);

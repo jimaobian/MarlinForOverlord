@@ -5,14 +5,14 @@
 
 #ifdef ULTRA_LCD
 
-  void lcd_update();
-  void lcd_init();
-  void lcd_setstatus(const char* message);
-  void lcd_setstatuspgm(const char* message);
-  void lcd_setalertstatuspgm(const char* message);
-  void lcd_reset_alert_level();
+void lcd_update();
+void lcd_init();
+void lcd_setstatus(const char* message);
+void lcd_setstatuspgm(const char* message);
+void lcd_setalertstatuspgm(const char* message);
+void lcd_reset_alert_level();
 
-  static unsigned char blink = 0;	// Variable for visualisation of fan rotation in GLCD
+static unsigned char blink = 0;         // Variable for visualisation of fan rotation in GLCD
 
   #define LCD_MESSAGEPGM(x) lcd_setstatuspgm(PSTR(x))
   #define LCD_ALERTMESSAGEPGM(x) lcd_setalertstatuspgm(PSTR(x))
@@ -21,29 +21,36 @@
   #define LCD_TIMEOUT_TO_STATUS 15000
 
   #ifdef ULTIPANEL
-  void lcd_buttons_update();
+void lcd_buttons_update();
   #else
-  FORCE_INLINE void lcd_buttons_update() {}
+FORCE_INLINE void lcd_buttons_update() {
+}
   #endif
 
-  extern int plaPreheatHotendTemp;
-  extern int plaPreheatHPBTemp;
-  extern int plaPreheatFanSpeed;
+extern int plaPreheatHotendTemp;
+extern int plaPreheatHPBTemp;
+extern int plaPreheatFanSpeed;
 
-  extern int absPreheatHotendTemp;
-  extern int absPreheatHPBTemp;
-  extern int absPreheatFanSpeed;
+extern int absPreheatHotendTemp;
+extern int absPreheatHPBTemp;
+extern int absPreheatFanSpeed;
 
-  void lcd_buzz(long duration,uint16_t freq);
-  bool lcd_clicked();
+void lcd_buzz(long duration,uint16_t freq);
+bool lcd_clicked();
 
 #elif !defined(ENABLE_ULTILCD2) //no lcd
-  FORCE_INLINE void lcd_update() {}
-  FORCE_INLINE void lcd_init() {}
-  FORCE_INLINE void lcd_setstatus(const char* message) {}
-  FORCE_INLINE void lcd_buttons_update() {}
-  FORCE_INLINE void lcd_reset_alert_level() {}
-  FORCE_INLINE void lcd_buzz(long duration,uint16_t freq) {}
+FORCE_INLINE void lcd_update() {
+}
+FORCE_INLINE void lcd_init() {
+}
+FORCE_INLINE void lcd_setstatus(const char* message) {
+}
+FORCE_INLINE void lcd_buttons_update() {
+}
+FORCE_INLINE void lcd_reset_alert_level() {
+}
+FORCE_INLINE void lcd_buzz(long duration,uint16_t freq) {
+}
 
   #define LCD_MESSAGEPGM(x)
   #define LCD_ALERTMESSAGEPGM(x)
