@@ -45,12 +45,10 @@
 
 
 
-#define OVERLORD_BETA "-B7 "
-// #define OVERLORD_BETA ""
+//#define OVERLORD_BETA "-B8 "
+ #define OVERLORD_BETA ""
 
-#define OVERLORD_CHINESE "\xFF"
-
-#define OVERLORD_VERSION "Ver.2.3.2"
+#define OVERLORD_VERSION "Ver.2.3.7"
 
 #define STRING_CONFIG_H_AUTHOR OVERLORD_VERSION OVERLORD_BETA
 
@@ -66,8 +64,8 @@
 #define FILAMENT_FORWARD_LENGTH_MINI       640
 
 
-#define _DEBUG
-#define _BED_DEBUG
+//#define _DEBUG
+//#define _BED_DEBUG
 
 
 #define ClearError
@@ -82,7 +80,7 @@
 
 #define TouchPlateOffset 0.6
 
-#define TouchPlateOffsetSensor 1.0
+#define TouchPlateOffsetSensor 0.1
 
 //===========================================================================
 //============================== Delta Settings =============================
@@ -166,10 +164,10 @@
 // The minimal temperature defines the temperature below which the heater will not be enabled It is used
 // to check that the wiring to the thermistor is not broken.
 // Otherwise this would lead to the heater being powered on all the time.
-#define HEATER_0_MINTEMP 5
-#define HEATER_1_MINTEMP 5
-#define HEATER_2_MINTEMP 5
-#define BED_MINTEMP 5
+#define HEATER_0_MINTEMP (-5)
+#define HEATER_1_MINTEMP (-5)
+#define HEATER_2_MINTEMP (-5)
+#define BED_MINTEMP (-5)
 
 // When temperature exceeds max temp, your heater will be switched off.
 // This feature exists to protect your hotend from overheating accidentally, but *NOT* from thermistor short/failure!
@@ -370,7 +368,7 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 #define max_software_endstops true  // If true, axis won't move to coordinates greater than the defined lengths below.
 // Travel limits after homing
 
-#define Y_MIN_POS_STR "-60"
+#define Y_MIN_POS_STR "-63"
 
 //////////////////////////////////
 #define X_MAX_POS_GATE (63)
@@ -386,7 +384,7 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 
 #define X_HOME_POS_GATE 0
 #define Y_HOME_POS_GATE 0
-#define Z_HOME_POS_GATE 287
+#define Z_HOME_POS_GATE 285
 //////////////////////////////////
 
 #define X_MAX_POS_PRO (85)
@@ -419,6 +417,24 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 #define X_HOME_POS_MINI 0
 #define Y_HOME_POS_MINI 0
 #define Z_HOME_POS_MINI 178
+
+
+//////////////////////////////////
+
+#define X_MAX_POS_PRO_SENSOR (85)
+#define X_MIN_POS_PRO_SENSOR (-85)
+#define Y_MAX_POS_PRO_SENSOR (85)
+#define Y_MIN_POS_PRO_SENSOR (-85)
+#define Z_MAX_POS_PRO_SENSOR (260)
+#define Z_MIN_POS_PRO_SENSOR (-20)
+
+#define X_MAX_LENGTH_PRO_SENSOR (X_MAX_POS_PRO_SENSOR - X_MIN_POS_PRO_SENSOR)
+#define Y_MAX_LENGTH_PRO_SENSOR (Y_MAX_POS_PRO_SENSOR - Y_MIN_POS_PRO_SENSOR)
+#define Z_MAX_LENGTH_PRO_SENSOR (Z_MAX_POS_PRO_SENSOR - Z_MIN_POS_PRO_SENSOR)
+
+#define X_HOME_POS_PRO_SENSOR 0
+#define Y_HOME_POS_PRO_SENSOR 0
+#define Z_HOME_POS_PRO_SENSOR 285
 
 //#define Z_HOME_POS_MINI 182 //for test only
 

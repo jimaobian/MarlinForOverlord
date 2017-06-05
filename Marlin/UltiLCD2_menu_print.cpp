@@ -247,8 +247,10 @@ static char* lcd_sd_menu_filename_callback(uint8_t nr)
     card.longFilename[0] = '\0';
     for(uint8_t idx=0; idx<LCD_CACHE_COUNT; idx++)
     {
-      if (LCD_CACHE_ID(idx) == nr)
-        strcpy(card.longFilename, LCD_CACHE_FILENAME(idx));
+      if (LCD_CACHE_ID(idx) == nr){
+        strncpy(card.longFilename, LCD_CACHE_FILENAME(idx), LONG_FILENAME_LENGTH -1);
+        card.longFilename[LONG_FILENAME_LENGTH -1] = '\0';
+      }
     }
     if (card.longFilename[0] == '\0')
     {
@@ -262,7 +264,8 @@ static char* lcd_sd_menu_filename_callback(uint8_t nr)
       
       uint8_t idx = nr % LCD_CACHE_COUNT;
       LCD_CACHE_ID(idx) = nr;
-      strcpy(LCD_CACHE_FILENAME(idx), card.longFilename);
+      strncpy(LCD_CACHE_FILENAME(idx), card.longFilename, LONG_FILENAME_LENGTH -1);
+      LCD_CACHE_FILENAME(idx)[LONG_FILENAME_LENGTH -1] = '\0';
       LCD_CACHE_TYPE(idx) = card.filenameIsDir ? 1 : 0;
       if (card.errorCode() && card.sdInserted)
       {
@@ -375,6 +378,7 @@ static void lcd_sd_menu_details_callback(uint8_t nr)
             }
 #endif
           }
+          
           lcd_draw_detail(buffer);
         }else{
           lcd_draw_detailP(LS(PSTR("No info available"),
@@ -627,8 +631,6 @@ static void lcd_menu_print_heatup()
 {
   LED_GLOW_HEAT();
   
-  static unsigned long heatupTimer=millis();
-  
   lcd_info_screen(lcd_menu_print_abort, NULL, LS(PSTR("ABORT"),
                                                  PSTR("\xAC" "\x80"  "\xAD" "\x80"  ),
                                                  PSTR("\xE5" "\x83"  "\xD7" "\x82"  "\xDB" "\x82"  )) , MenuForward);
@@ -656,11 +658,11 @@ static void lcd_menu_print_heatup()
         for(uint8_t e=0; e<EXTRUDERS; e++)
         {
           if (current_temperature[e] < target_temperature[e] - TEMP_HYSTERESIS || current_temperature[e] > target_temperature[e] + TEMP_HYSTERESIS) {
-            heatupTimer=millis();
+            menuTimer=millis();
           }
         }
         
-        if (millis()-heatupTimer>=TEMP_RESIDENCY_TIME*1000UL && printing_state == PRINT_STATE_NORMAL)
+        if (millis()-menuTimer>=TEMP_RESIDENCY_TIME*1000UL && printing_state == PRINT_STATE_NORMAL)
         {
           doHotendHome();
           currentMenu = lcd_menu_print_prepare_printing;
@@ -680,11 +682,11 @@ static void lcd_menu_print_heatup()
     for(uint8_t e=0; e<EXTRUDERS; e++)
     {
       if (current_temperature[e] < target_temperature[e] - TEMP_HYSTERESIS || current_temperature[e] > target_temperature[e] + TEMP_HYSTERESIS) {
-        heatupTimer=millis();
+        menuTimer=millis();
       }
     }
     
-    if (millis()-heatupTimer>=TEMP_RESIDENCY_TIME*1000UL && printing_state == PRINT_STATE_NORMAL)
+    if (millis()-menuTimer>=TEMP_RESIDENCY_TIME*1000UL && printing_state == PRINT_STATE_NORMAL)
     {
       doHotendHome();
       currentMenu = lcd_menu_print_prepare_printing;
@@ -1631,7 +1633,7 @@ static uint8_t doStableReadSD(uint32_t theFilePosition, char *theBuffer, uint8_t
 
 static uint8_t doSearchZLayer(uint32_t theFilePosition, char *theBuffer, uint8_t theSize)
 {
-  unsigned long printResumeTimer=millis();
+  menuTimer=millis();
   
   char* searchPtr;
   
@@ -1642,7 +1644,7 @@ static uint8_t doSearchZLayer(uint32_t theFilePosition, char *theBuffer, uint8_t
   
   do {
     
-    if (millis()-printResumeTimer>=2000) {
+    if (millis()-menuTimer>=2000) {
       previous_millis_cmd = millis();
       return RESUME_ERROR_SD_SEARCH_TOO_LONG;
     }
@@ -1716,7 +1718,7 @@ static uint8_t doSearchZLayer(uint32_t theFilePosition, char *theBuffer, uint8_t
 
 static uint8_t doSearchPause(uint32_t theFilePosition, char *theBuffer, uint8_t theSize)
 {
-  unsigned long printResumeTimer=millis();
+  menuTimer=millis();
   
   char* searchPtr;
   
@@ -1727,7 +1729,7 @@ static uint8_t doSearchPause(uint32_t theFilePosition, char *theBuffer, uint8_t 
   
   do {
     
-    if (millis()-printResumeTimer>=2000) {
+    if (millis()-menuTimer>=2000) {
       previous_millis_cmd = millis();
       return RESUME_ERROR_SD_SEARCH_TOO_LONG;
     }
@@ -2119,10 +2121,10 @@ static void lcd_menu_print_resume_manual_search_sd_card()
   char buffer[64];
   char *bufferPtr=NULL;
   
-  unsigned long printResumeTimer=millis();
+  menuTimer=millis();
   
   do {
-    if (millis()-printResumeTimer>=2000) {
+    if (millis()-menuTimer>=2000) {
       previous_millis_cmd = millis();
       return;
     }
@@ -2197,24 +2199,11 @@ static void lcd_menu_print_resume_error()
   
   if (resumeError) {
     switch (resumeError) {
-      case RESUME_ERROR_Z_RANGE:
-        lcd_lib_draw_string_centerP(20, PSTR("Z doesn't match"));
-        break;
       case RESUME_ERROR_M25:
         lcd_lib_draw_string_centerP(20, PSTR("M25 found"));
         break;
-      case RESUME_ERROR_SDUPSState:
-        lcd_lib_draw_string_centerP(20, PSTR("SDUPSState wrong"));
-        int_to_string(SDUPSState, buffer);
-        lcd_lib_draw_string_center(30, buffer);
-        break;
       case RESUME_ERROR_SD_VALIDATE:
         lcd_lib_draw_string_centerP(20, PSTR("SD card file changed"));
-        break;
-      case RESUME_ERROR_SD_FILEPOSITION:
-        lcd_lib_draw_string_centerP(20, PSTR("EEPROM file position"));
-        int_to_string(SDUPSFilePosition, buffer);
-        lcd_lib_draw_string_center(30, buffer);
         break;
       case RESUME_ERROR_SD_READ_CARD:
         lcd_lib_draw_string_centerP(20, PSTR("SD read error"));
@@ -2222,7 +2211,6 @@ static void lcd_menu_print_resume_error()
       case RESUME_ERROR_SD_SEARCH_TOO_LONG:
         lcd_lib_draw_string_centerP(20, PSTR("SD search too long"));
         break;
-        
       default:
         break;
     }
@@ -2264,16 +2252,15 @@ static void checkPrintFinished()
 #ifdef FilamentDetection
   
   if (isFilamentDetectionEnable) {
-    static unsigned long FilamentDetectionTimer=millis();
     if (READ(FilamentDetectionPin)) {
-      if (millis()-FilamentDetectionTimer>500) {
+      if (millis()-menuTimer>500) {
         abortPrint();
         currentMenu = lcd_menu_print_out_of_filament;
         SELECT_MAIN_MENU_ITEM(0);
       }
     }
     else{
-      FilamentDetectionTimer=millis();
+      menuTimer=millis();
     }
   }
   
@@ -2288,6 +2275,7 @@ static void checkPrintFinished()
 static void doOutOfFilament()
 {
   resumeState=RESUME_STATE_FILAMENT;
+  menuTimer = millis();
 }
 
 static void lcd_menu_print_out_of_filament()

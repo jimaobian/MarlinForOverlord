@@ -264,6 +264,9 @@ int PID_MAX = 160;
 int FILAMENT_FORWARD_LENGTH = FILAMENT_FORWARD_LENGTH_PRO;
 int FILAMENT_REVERSAL_LENGTH = FILAMENT_REVERSAL_LENGTH_PRO;
 
+unsigned int dropsegments = DROP_SEGMENTS;
+
+
 bool storeDevice(uint8_t type)
 {
   eeprom_write_byte((uint8_t*)EEPROM_DEVICE_OFFSET , type);
@@ -376,14 +379,14 @@ void retrieveDevice()
       Device_isBattery = false;
       break;
     case OVERLORD_TYPE_PS:
-      Device_isGate = true;
+      Device_isGate = false;
       Device_isNewHeater = true;
       Device_isPro = true;
       Device_isWifi = false;
       Device_isBedHeat = true;
       Device_isLevelSensor = true;
       Device_isABS = true;
-      Device_isBattery = true;
+      Device_isBattery = false;
       break;
     case OVERLORD_TYPE_MS:
       Device_isGate = false;
@@ -393,6 +396,16 @@ void retrieveDevice()
       Device_isBedHeat = false;
       Device_isLevelSensor = true;
       Device_isABS = false;
+      Device_isBattery = false;
+      break;
+    case OVERLORD_TYPE_PSD:
+      Device_isGate = true;
+      Device_isNewHeater = true;
+      Device_isPro = true;
+      Device_isWifi = false;
+      Device_isBedHeat = true;
+      Device_isLevelSensor = true;
+      Device_isABS = true;
       Device_isBattery = false;
       break;
     default:
@@ -621,9 +634,9 @@ void enquecommand(const char *cmd)
     isEnqueueingRamCommand[(enqueueingCommandIndex + enqueueingCommandLenth) % EnqueueingCommandBufSize] =true;
     enqueueingCommandLenth += 1;
 
-//    SERIAL_DEBUGPGM("enqueing \"");
-//    SERIAL_DEBUGLN(cmd);
-//    SERIAL_DEBUGLNPGM("\"");
+    SERIAL_DEBUGPGM("enqueing \"");
+    SERIAL_DEBUGLN(cmd);
+    SERIAL_DEBUGLNPGM("\"");
 
     isEnqueueingCommand = true;
   }
@@ -876,6 +889,9 @@ void storeLanguage(uint8_t language)
 void retriveLanguage()
 {
   languageType = eeprom_read_byte((const uint8_t*)EEPROM_LANGUAGE_OFFSET);
+  if (languageType > 2) {
+    languageType = LANGUAGE_ENGLISH;
+  }
 }
 
 void setup()
@@ -930,19 +946,19 @@ void setup()
   Config_RetrieveSettings();
   lifetime_stats_init();
 
-//  SERIAL_DEBUGLNPGM("plainFactor:");
-//  SERIAL_DEBUGLN(plainFactorA*1000000.0);
-//  SERIAL_DEBUGLN(plainFactorB*1000000.0);
-//  SERIAL_DEBUGLN(plainFactorC*1000000.0);
-//
-//  SERIAL_DEBUGLNPGM("plainFactor:");
-//  SERIAL_DEBUGLN(plainFactorAAC*1000000.0);
-//  SERIAL_DEBUGLN(plainFactorBBC*1000000.0);
-//  SERIAL_DEBUGLN(plainFactorCAC*1000000.0);
-//  SERIAL_DEBUGLN(plainFactorCBC*1000000.0);
-//
-//  SERIAL_DEBUGPGM("PCB VERSION:");
-//  SERIAL_DEBUGLN((int)Device_isNewPCB);
+  SERIAL_DEBUGLNPGM("plainFactor:");
+  SERIAL_DEBUGLN(plainFactorA*1000000.0);
+  SERIAL_DEBUGLN(plainFactorB*1000000.0);
+  SERIAL_DEBUGLN(plainFactorC*1000000.0);
+
+  SERIAL_DEBUGLNPGM("plainFactor:");
+  SERIAL_DEBUGLN(plainFactorAAC*1000000.0);
+  SERIAL_DEBUGLN(plainFactorBBC*1000000.0);
+  SERIAL_DEBUGLN(plainFactorCAC*1000000.0);
+  SERIAL_DEBUGLN(plainFactorCBC*1000000.0);
+
+  SERIAL_DEBUGPGM("PCB VERSION:");
+  SERIAL_DEBUGLN((int)Device_isNewPCB);
 
   tp_init(); // Initialize temperature loop
   plan_init(); // Initialize planner;
@@ -973,18 +989,19 @@ void setup()
 
 void calculate_delta_reverse(float theDelta[3], float theResult[3]);
 
+void printFreeMemory(){
+  static unsigned long freeMemoryTimer=millis();
+  
+  if (millis()-freeMemoryTimer >1000) {
+    freeMemoryTimer=millis();
+    SERIAL_DEBUGLNPGM("freeMemory");
+    SERIAL_DEBUGLN(freeMemory());
+  }
+}
 
 
 void loop()
 {
-  //      static unsigned long freeMemoryTimer=millis();
-  //
-  //      if (millis()-freeMemoryTimer >1000) {
-  //          freeMemoryTimer=millis();
-  //          SERIAL_DEBUGLNPGM("freeMemory");
-  //          SERIAL_DEBUGLN(freeMemory());
-  //      }
-
   if (Device_isWifi) {
     static uint8_t powerAtomFlag = 0;
     static unsigned long powerAtomTimer = millis();
@@ -1387,6 +1404,11 @@ XYZ_CONSTS_FROM_CONFIG(float, base_max_pos_MINI,    MAX_POS_MINI);
 XYZ_CONSTS_FROM_CONFIG(float, base_home_pos_MINI,   HOME_POS_MINI);
 XYZ_CONSTS_FROM_CONFIG(float, max_length_MINI,      MAX_LENGTH_MINI);
 
+XYZ_CONSTS_FROM_CONFIG(float, base_min_pos_PRO_SENSOR,    MIN_POS_PRO_SENSOR);
+XYZ_CONSTS_FROM_CONFIG(float, base_max_pos_PRO_SENSOR,    MAX_POS_PRO_SENSOR);
+XYZ_CONSTS_FROM_CONFIG(float, base_home_pos_PRO_SENSOR,   HOME_POS_PRO_SENSOR);
+XYZ_CONSTS_FROM_CONFIG(float, max_length_PRO_SENSOR,      MAX_LENGTH_PRO_SENSOR);
+
 #define XYZ_CONSTS_READ(type, array)  \
 static inline type array(int axis)  \
 { \
@@ -1394,7 +1416,12 @@ static inline type array(int axis)  \
     return pgm_read_any(&array ## _GATE_P[axis]);  \
   } \
   else if (Device_isPro){ \
-    return pgm_read_any(&array ## _PRO_P[axis]); \
+    if (Device_isLevelSensor) {\
+      return pgm_read_any(&array ## _PRO_SENSOR_P[axis]); \
+    }\
+    else{\
+      return pgm_read_any(&array ## _PRO_P[axis]); \
+    }\
   } \
   else {  \
     return pgm_read_any(&array ## _MINI_P[axis]);  \
@@ -1860,7 +1887,7 @@ void process_commands()
         if (Device_isLevelSensor) {
           feedrate=2000;
           
-          destination[Z_AXIS] = 5;
+          destination[Z_AXIS] = 3;
           destination[X_AXIS] = fittingBedArray[index][X_AXIS];
           destination[Y_AXIS] = fittingBedArray[index][Y_AXIS];
           plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], feedrate/60, active_extruder);
@@ -1903,7 +1930,7 @@ void process_commands()
           destination[Z_AXIS] = fittingBedArray[index][Z_AXIS] - ADDING_Z_FOR_POSITIVE;
           
           plan_set_position(fittingBedArray[index][X_AXIS], fittingBedArray[index][Y_AXIS], destination[Z_AXIS], destination[E_AXIS]);
-          destination[Z_AXIS] = 5;
+          destination[Z_AXIS] = 3;
           plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], feedrate/60, active_extruder);
           st_synchronize();
         }

@@ -357,6 +357,7 @@ void retriveLanguage(uint8_t language);
 
 #define LS(a,b,c) (languageType==LANGUAGE_ENGLISH?a:(languageType==LANGUAGE_CHINESE?b:c))
 
+void printFreeMemory();
 
 
 #define OVERLORD_TYPE_P     1
@@ -369,10 +370,11 @@ void retriveLanguage(uint8_t language);
 #define OVERLORD_TYPE_PNHL  8
 #define OVERLORD_TYPE_PS    9
 #define OVERLORD_TYPE_MS    10
+#define OVERLORD_TYPE_PSD   11
 
 
 #define OVERLORD_TYPE_MIN    OVERLORD_TYPE_P
-#define OVERLORD_TYPE_MAX    OVERLORD_TYPE_MS
+#define OVERLORD_TYPE_MAX    OVERLORD_TYPE_PSD
 
 
 extern bool Device_isGate;

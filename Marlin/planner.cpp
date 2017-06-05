@@ -1113,6 +1113,13 @@ void plan_buffer_line(const float &x, const float &y, const float &z, const floa
   target[Z_AXIS] = lround((y*plainFactorBBC+plainFactorZBuffer- plainFactorZBuffer*plainFactorCBC)*axis_steps_per_unit[Z_AXIS]);
   target[E_AXIS] = lround(e*axis_steps_per_unit[E_AXIS]*volume_to_filament_length[extruder]);
 
+  
+//  SERIAL_DEBUGLNPGM("result:");
+//  SERIAL_DEBUGLN((z*plainFactorAAC+x-x*plainFactorCAC)*100);
+//  SERIAL_DEBUGLN((y-y*plainFactorCBC-plainFactorZBuffer*plainFactorBBC)*100);
+//  SERIAL_DEBUGLN((y*plainFactorBBC+plainFactorZBuffer- plainFactorZBuffer*plainFactorCBC - add_homeing[Z_AXIS])*100);
+  
+  
   calculate_delta_long(target_raw, target);
 
   //  SERIAL_ECHOLNPGM("target[E_AXIS]_raw");

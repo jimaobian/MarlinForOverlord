@@ -17,24 +17,28 @@ float plainFactorCAC=0.0;
 float plainFactorCBC=0.0;
 
 float fittingBedOffset[NodeNum];
+float fittingBedSensorOffset[NodeNum];
+
+
+void fittingBedOffSensorsetInit()
+{
+  fittingBedSensorOffset[0]=1.0;
+  fittingBedSensorOffset[1]=1.0;
+  fittingBedSensorOffset[2]=1.0;
+  fittingBedSensorOffset[3]=1.0;
+  fittingBedSensorOffset[4]=1.0;
+  fittingBedSensorOffset[5]=1.0;
+}
+
+
 void fittingBedOffsetInit()
 {
-//  if (Device_isLevelSensor) {
-//    fittingBedOffset[0]=0.3;
-//    fittingBedOffset[1]=0.4;
-//    fittingBedOffset[2]=0.6;
-//    fittingBedOffset[3]=0.7;
-//    fittingBedOffset[4]=0.6;
-//    fittingBedOffset[5]=0.2;
-//  }
-//  else{
-    fittingBedOffset[0]=0.0;
-    fittingBedOffset[1]=0.0;
-    fittingBedOffset[2]=0.0;
-    fittingBedOffset[3]=0.0;
-    fittingBedOffset[4]=0.0;
-    fittingBedOffset[5]=0.0;   //old -0.3
-//  }
+  fittingBedOffset[0]=0.0;
+  fittingBedOffset[1]=0.0;
+  fittingBedOffset[2]=0.0;
+  fittingBedOffset[3]=0.0;
+  fittingBedOffset[4]=0.0;
+  fittingBedOffset[5]=0.0;   //old -0.3
 }
 
 
@@ -42,28 +46,28 @@ float fittingBedArray[NodeNum][3];
 
 void fittingBedArrayInit()
 {
-  fittingBedArray[0][X_AXIS]=0;
-  fittingBedArray[0][Y_AXIS]=50;
+  fittingBedArray[0][X_AXIS]=0/1.5;
+  fittingBedArray[0][Y_AXIS]=50/1.5-8.0;
   fittingBedArray[0][Z_AXIS]=ADDING_Z_FOR_POSITIVE;
 
-  fittingBedArray[1][X_AXIS]=-43;
-  fittingBedArray[1][Y_AXIS]=25;
+  fittingBedArray[1][X_AXIS]=-43/1.5;
+  fittingBedArray[1][Y_AXIS]=25/1.5-8.0;
   fittingBedArray[1][Z_AXIS]=ADDING_Z_FOR_POSITIVE;
 
-  fittingBedArray[2][X_AXIS]=-43;
-  fittingBedArray[2][Y_AXIS]=-25;
+  fittingBedArray[2][X_AXIS]=-43/1.5;
+  fittingBedArray[2][Y_AXIS]=-25/1.5-8.0;
   fittingBedArray[2][Z_AXIS]=ADDING_Z_FOR_POSITIVE;
 
-  fittingBedArray[3][X_AXIS]=0;
-  fittingBedArray[3][Y_AXIS]=-50;
+  fittingBedArray[3][X_AXIS]=0/1.5;
+  fittingBedArray[3][Y_AXIS]=-50/1.5-8.0;
   fittingBedArray[3][Z_AXIS]=ADDING_Z_FOR_POSITIVE;
 
-  fittingBedArray[4][X_AXIS]=43;
-  fittingBedArray[4][Y_AXIS]=-25;
+  fittingBedArray[4][X_AXIS]=43/1.5;
+  fittingBedArray[4][Y_AXIS]=-25/1.5-8.0;
   fittingBedArray[4][Z_AXIS]=ADDING_Z_FOR_POSITIVE;
 
-  fittingBedArray[5][X_AXIS]=43;
-  fittingBedArray[5][Y_AXIS]=25;
+  fittingBedArray[5][X_AXIS]=43/1.5;
+  fittingBedArray[5][Y_AXIS]=25/1.5-8.0;
   fittingBedArray[5][Z_AXIS]=ADDING_Z_FOR_POSITIVE;
 
   //  fittingBedArray[6][X_AXIS]=0;
@@ -152,66 +156,68 @@ bool fittingBedRaw(uint8_t nodeNumber)
   return 0;
 }
 
-bool fittingBed()
+void fittingBed()
 {
-  fittingBedRaw(NodeNum);
-
-  SERIAL_BED_DEBUGLNPGM("fitting error:");
-
-  float fittingMaxError=0.0;
-  float fittingError=0.0;
-
-  uint8_t fittingMaxErrorIndex;
-
-  for (uint8_t index=0; index<NodeNum; index++) {
-
-    fittingError=plainFactorA*fittingBedArray[index][X_AXIS]+plainFactorB*fittingBedArray[index][Y_AXIS]+plainFactorC*fittingBedArray[index][Z_AXIS]+1;
-
-    if (fabs(fittingError) > fabs(fittingMaxError)) {
-      fittingMaxError=fittingError;
-      fittingMaxErrorIndex=index;
+  float fittingBedArrayBuf[NodeNum][3];
+  
+  memcpy(fittingBedArrayBuf, fittingBedArray, sizeof(fittingBedArray));
+  
+  if (Device_isLevelSensor) {
+    for (uint8_t index=0; index<NodeNum; index++) {
+      fittingBedArray[index][Z_AXIS] += fittingBedSensorOffset[index];
     }
-
-    SERIAL_BED_DEBUG((int)index);
-    SERIAL_BED_DEBUGPGM(":");
-    SERIAL_BED_DEBUGLN(fittingError*1000000);
+    fittingBedRaw(NodeNum);
+    
+    SERIAL_BED_DEBUGLNPGM("fitting distance:");
+    for (uint8_t index=0; index<NodeNum; index++) {
+      SERIAL_BED_DEBUGLN((plainFactorA*fittingBedArray[index][X_AXIS]+plainFactorB*fittingBedArray[index][Y_AXIS]+plainFactorC*fittingBedArray[index][Z_AXIS]+1)/(sqrt(plainFactorA*plainFactorA+plainFactorB*plainFactorB+plainFactorC*plainFactorC)));
+    }
   }
-
-  for (int index=0; index<3; index++) {
-    fittingBedArray[fittingMaxErrorIndex][index] = fittingBedArray[NodeNum-1][index];
+  else{
+    fittingBedRaw(NodeNum);
+    
+    SERIAL_BED_DEBUGLNPGM("fitting error:");
+    
+    float fittingMaxError=0.0;
+    float fittingError=0.0;
+    
+    uint8_t fittingMaxErrorIndex;
+    
+    for (uint8_t index=0; index<NodeNum; index++) {
+      
+      fittingError=plainFactorA*fittingBedArray[index][X_AXIS]+plainFactorB*fittingBedArray[index][Y_AXIS]+plainFactorC*fittingBedArray[index][Z_AXIS]+1;
+      
+      if (fabs(fittingError) > fabs(fittingMaxError)) {
+        fittingMaxError=fittingError;
+        fittingMaxErrorIndex=index;
+      }
+      
+      SERIAL_BED_DEBUG((int)index);
+      SERIAL_BED_DEBUGPGM(":");
+      SERIAL_BED_DEBUGLN(fittingError*1000000);
+    }
+    
+    for (int index=0; index<3; index++) {
+      fittingBedArray[fittingMaxErrorIndex][index] = fittingBedArray[NodeNum-1][index];
+    }
+    
+    fittingBedRaw(NodeNum-1);
   }
-
-  fittingBedRaw(NodeNum-1);
-  //
-  //  fittingBedArray[fittingMaxErrorIndex][Z_AXIS]=(-1.0-plainFactorA*fittingBedArray[fittingMaxErrorIndex][X_AXIS]-plainFactorB*fittingBedArray[fittingMaxErrorIndex][Y_AXIS])/plainFactorC;
-  //
-  //  fittingBedArray[fittingMinErrorIndex][Z_AXIS]=(-1.0-plainFactorA*fittingBedArray[fittingMinErrorIndex][X_AXIS]-plainFactorB*fittingBedArray[fittingMinErrorIndex][Y_AXIS])/plainFactorC;
-  //
-  //  fittingBedRaw();
-  //
+  
   plainFactorABackUp=plainFactorA;
   plainFactorBBackUp=plainFactorB;
   plainFactorCBackUp=plainFactorC;
-  //
-  //  SERIAL_BED_DEBUGLNPGM("fitting error refinded:");
-  //
-  //  for (uint8_t index=0; index<NodeNum; index++) {
-  //
-  //    fittingError=plainFactorA*fittingBedArray[index][X_AXIS]+plainFactorB*fittingBedArray[index][Y_AXIS]+plainFactorC*fittingBedArray[index][Z_AXIS]+1;
-  //
-  //    SERIAL_BED_DEBUGLN(fittingError*1000000);
-  //  }
-  //
+  
   fittingBedArrayInit();
-
+  
   for (uint8_t index=0; index<NodeNum; index++) {
     fittingBedArray[index][Z_AXIS]=(-1.0-plainFactorA*fittingBedArray[index][X_AXIS]-plainFactorB*fittingBedArray[index][Y_AXIS])/plainFactorC;
     fittingBedArray[index][Z_AXIS]+=fittingBedOffset[index];
   }
-
+  
   fittingBedRaw(NodeNum);
+  memcpy(fittingBedArray, fittingBedArrayBuf, sizeof(fittingBedArray));
 }
-
 
 void Inverse(float matrix1[][3],float matrix2[][3],int n,float d)
 {

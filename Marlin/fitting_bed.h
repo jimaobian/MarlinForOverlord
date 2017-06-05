@@ -19,14 +19,16 @@ extern float plainFactorCAC;
 extern float plainFactorCBC;
 
 extern float fittingBedOffset[NodeNum];
+extern float fittingBedSensorOffset[NodeNum];
 extern void fittingBedOffsetInit();
+extern void fittingBedOffSensorsetInit();
 
 
 // Ax+By+Cz+1=0
 extern void fittingBedUpdateK();
 extern void fittingBedResetK();
 
-extern bool fittingBed();
+extern void fittingBed();
 extern void fittingBedResetBackUp();
 
 extern void fittingBedReset();

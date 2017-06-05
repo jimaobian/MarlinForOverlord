@@ -14,6 +14,7 @@
   #include "UltiLCD2_menu_maintenance.h"
   #include "fitting_bed.h"
   #include "stepper.h"
+#include "ConfigurationStore.h"
 
 static void lcd_menu_maintenance_retraction();
 static void lcd_retraction_details(uint8_t nr);
@@ -54,9 +55,12 @@ static void lcd_menu_maintenance_heat_for_manual_level();
 static void lcd_menu_maintenance_manual_level();
 void lcd_menu_device();
 
+static void lcd_menu_maintenance_auto_level_refine_option();
+static void lcd_menu_maintenance_auto_level_refine_process();
 
-  #define CIRCLE_RADIUS 60.0
-  #define CIRCLE_RADIUS_STRING "60"
+
+  #define CIRCLE_RADIUS 55.0
+  #define CIRCLE_RADIUS_STRING "55"
 
 static float circleDegree=0;
 static float circleRadius=CIRCLE_RADIUS;
@@ -65,7 +69,7 @@ static uint8_t linePosition = 0;
 
   #define MANUAL_LEVEL_NONE 0
   #define MANUAL_LEVEL_ENABLE 1
-  #define MANUAL_LEVLE_STOP 2
+  #define MANUAL_LEVEL_STOP 2
 uint8_t manualLevelState=MANUAL_LEVEL_NONE;
 
 /****************************************************************************************
@@ -154,6 +158,7 @@ void lcd_menu_maintenance()
       setTargetHotend(material[active_extruder].temperature, active_extruder);
       isReload=true;
       lcd_change_to_menu(lcd_menu_change_material_preheat, SCROLL_MENU_ITEM_POS(0), MenuForward);
+      menuTimer = millis();
     }
     else if (IS_SELECTED_SCROLL(1)) {
       lcd_change_to_menu(lcd_menu_maintenance_select_level, SCROLL_MENU_ITEM_POS(0), MenuForward);
@@ -169,11 +174,13 @@ void lcd_menu_maintenance()
 * Level select Menu
 *
 ****************************************************************************************/
-
+void doStartHeatForLevel(){
+  menuTimer = millis();
+}
 
 static void lcd_menu_maintenance_select_level()
 {
-  lcd_question_screen(lcd_menu_maintenance_heat_for_level, NULL, LS(PSTR("YES"),
+  lcd_question_screen(lcd_menu_maintenance_heat_for_level, doStartHeatForLevel, LS(PSTR("YES"),
                                                                     PSTR("\x8C" "\x82"  "\xDB" "\x80"  ),
                                                                     PSTR("\x91" "\x84"  "\xB6" "\x83"  )) , lcd_menu_maintenance_select_manual_level, NULL, LS(PSTR("NO"),
                                                                                                                                    PSTR("\xD8" "\x80"  "\xD9" "\x80"  ),
@@ -208,8 +215,8 @@ static void doManualLevelHeat()
 
   target_temperature_bed = 0;
   fanSpeed = 0;
-  SERIAL_ECHOLNPGM("target_temperature_bed");
-  SERIAL_ECHOLN(target_temperature_bed);
+  SERIAL_DEBUGPGM("target_temperature_bed");
+  SERIAL_DEBUGLN(target_temperature_bed);
 }
 
 static void doCancelManualLevel()
@@ -240,6 +247,8 @@ static void lcd_menu_maintenance_select_manual_level()
 * Auto level :waiting heating
 *
 ****************************************************************************************/
+static bool willEnterSensorCompensation = false;
+
 static void doMaintenanceCancelAutoLevel()
 {
   lcd_change_to_menu(lcd_menu_maintenance,1,MenuBackward);
@@ -253,12 +262,18 @@ static void lcd_menu_maintenance_heat_for_level()
   int16_t temp = degHotend(0) - 20;
   int16_t target = degTargetHotend(0) - 10 - 20;
   if (temp < 0) temp = 0;
-  if (temp > target) {
+  if (temp > target && millis()-menuTimer>800) {
     setTargetHotend(0, 0);
     setTargetBed(0);
     enquecommand_P(PSTR("G29\nM84"));
     currentMenu = lcd_menu_maintenance_waiting_auto_level;
     temp = target;
+    if (isFactorySensorOffsetMode()) {
+      willEnterSensorCompensation = true ;
+    }
+    else{
+      willEnterSensorCompensation = false;
+    }
   }
 
   uint8_t progress = uint8_t(temp * 125 / target);
@@ -287,6 +302,7 @@ static void lcd_menu_maintenance_heat_for_level()
 * Auto level :waiting Auto leveling finishing
 *
 ****************************************************************************************/
+
 static void doMaintenanceCancelAutoLevelProcession()
 {
   doMaintenanceCancelAutoLevel();
@@ -297,13 +313,32 @@ static void lcd_menu_maintenance_waiting_auto_level()
 {
   LED_NORMAL();
 
+  if (lcd_lib_encoder_pos >= 2){
+    if (Device_isLevelSensor) {
+      willEnterSensorCompensation = true;
+    }
+  }
+  
   if (printing_state!=PRINT_STATE_NORMAL || is_command_queued() || isCommandInBuffer()) {
-    lcd_info_screen(NULL, doMaintenanceCancelAutoLevelProcession, LS(PSTR("ABORT"),
-                                                                     PSTR("\xAC" "\x80"  "\xAD" "\x80"  ),
-                                                                     PSTR("\xE5" "\x83"  "\xD7" "\x82"  "\xDB" "\x82"  )) , MenuForward);
+    if (willEnterSensorCompensation) {
+      lcd_info_screen(NULL, NULL, LS(PSTR("Sensor Calibrate"),
+                                     PSTR("Sensor Calibrate"),
+                                     PSTR("Sensor Calibrate")) , MenuForward);
+    }
+    else{
+      lcd_info_screen(NULL, doMaintenanceCancelAutoLevelProcession, LS(PSTR("ABORT"),
+                                                                       PSTR("\xAC" "\x80"  "\xAD" "\x80"  ),
+                                                                       PSTR("\xE5" "\x83"  "\xD7" "\x82"  "\xDB" "\x82"  )) , MenuForward);
+    }
   }
   else{
-    lcd_change_to_menu(lcd_menu_maintenance,1,MenuBackward);
+    if (willEnterSensorCompensation) {
+      lcd_change_to_menu(lcd_menu_maintenance_auto_level_refine_option,0,MenuForward);
+    }
+    else{
+      lcd_change_to_menu(lcd_menu_maintenance,1,MenuBackward);
+    }
+    
   }
   
   lcd_lib_draw_string_centerP(LS(10, 11, 11), LS(PSTR("The Nozzle will"),
@@ -321,6 +356,262 @@ static void lcd_menu_maintenance_waiting_auto_level()
 }
 
 
+
+
+/****************************************************************************************
+ * Auto level :waiting Auto leveling refine option
+ *
+ ****************************************************************************************/
+
+static void resetSensorOffset(){
+  fittingBedOffSensorsetInit();
+  int index=EEPROM_FITTING_OFFSET;
+  uint8_t isValid = 'F';
+  EEPROM_WRITE_VAR(index, isValid);
+  EEPROM_WRITE_VAR(index, fittingBedSensorOffset);
+  EEPROM_WRITE_VAR(index, fittingBedSensorOffset);
+}
+
+void readSensorOffset(){
+  SERIAL_DEBUGLNPGM("readSensorOffset");
+  int index=EEPROM_FITTING_OFFSET;
+  uint8_t isValid;
+  EEPROM_READ_VAR(index, isValid);
+  if (isValid == 'F' || isValid == 'U') {
+    EEPROM_READ_VAR(index, fittingBedSensorOffset);
+  }else{
+    resetSensorOffset();
+  }
+}
+
+void writeSensorOffset(){
+  SERIAL_DEBUGLNPGM("writeSensorOffset");
+  int index=EEPROM_FITTING_OFFSET;
+  uint8_t isValid;
+  EEPROM_READ_VAR(index, isValid);
+  if (isValid == 'F') {
+    index=EEPROM_FITTING_OFFSET;
+    isValid = 'U';
+    EEPROM_WRITE_VAR(index, isValid);
+    EEPROM_WRITE_VAR(index, fittingBedSensorOffset);
+    EEPROM_WRITE_VAR(index, fittingBedSensorOffset);
+  }
+  else if (isValid == 'U'){
+    index=EEPROM_FITTING_OFFSET;
+    EEPROM_WRITE_VAR(index, isValid);
+    EEPROM_WRITE_VAR(index, fittingBedSensorOffset);
+  }
+  else{
+    resetSensorOffset();
+  }
+}
+
+bool isFactorySensorOffsetMode(){
+//  SERIAL_DEBUGLNPGM("isFactorySensorOffsetMode");
+  int index=EEPROM_FITTING_OFFSET;
+  uint8_t isValid;
+  EEPROM_READ_VAR(index, isValid);
+  return isValid == 'F' && Device_isLevelSensor;
+}
+
+void restoreFactorySensorOffset(){
+  SERIAL_DEBUGLNPGM("restoreFactorySensorOffset");
+
+  int index=EEPROM_FITTING_OFFSET;
+  uint8_t isValid;
+  EEPROM_READ_VAR(index, isValid);
+  if (isValid == 'F' || isValid == 'U') {
+    index=EEPROM_FITTING_OFFSET;
+    EEPROM_READ_VAR(index, isValid);
+    EEPROM_READ_VAR(index, fittingBedSensorOffset);
+    EEPROM_READ_VAR(index, fittingBedSensorOffset);
+    
+    index=EEPROM_FITTING_OFFSET;
+    EEPROM_WRITE_VAR(index, isValid);
+    EEPROM_WRITE_VAR(index, fittingBedSensorOffset);
+  }else{
+    resetSensorOffset();
+  }
+}
+
+void clearFactorySensorOffset(){
+  SERIAL_DEBUGLNPGM("clearFactorySensorOffset");
+
+  int index=EEPROM_FITTING_OFFSET;
+  uint8_t isValid = 0;
+  EEPROM_WRITE_VAR(index, isValid);
+}
+
+static int8_t autoLevelRefineIndex;
+static void doAutoLevelRefine();
+
+static void doCancelAutoLevelRefine(){
+  nextEncoderPos = 1;
+}
+
+static void doPrepareAutoLevelRefine(){
+  dropsegments = 0;
+  autoLevelRefineIndex = -1;
+  fittingBedReset();
+  fittingBedResetK();
+  add_homeing[Z_AXIS]=0;
+  enquecommand_P(PSTR("G28"));
+  doAutoLevelRefine();
+  lcd_lib_encoder_pos = 0;
+}
+
+static void lcd_menu_maintenance_auto_level_refine_option(){
+  lcd_question_screen(lcd_menu_maintenance_auto_level_refine_process, doPrepareAutoLevelRefine,LS(PSTR("YES"),
+                                                                                                  PSTR("\x8C" "\x82"  "\xDB" "\x80"  ),
+                                                                                                  PSTR("\x91" "\x84"  "\xB6" "\x83"  )) ,
+                      lcd_menu_maintenance, doCancelAutoLevelRefine,LS(PSTR("NO"),
+                                                                       PSTR("\xD8" "\x80"  "\xD9" "\x80"  ),
+                                                                       PSTR("\xFF" "\x82"  "\xC6" "\x82"  )) );
+  lcd_lib_draw_string_centerP(LS(10, 11, 11), LS(PSTR("Sensor offset."),
+                                                 PSTR("Sensor offset."),
+                                                 PSTR("Sensor offset.")));
+  lcd_lib_draw_string_centerP(LS(20, 24, 24), LS(PSTR("Prepare A4 paper"),
+                                                 PSTR("Prepare A4 paper"),
+                                                 PSTR("Prepare A4 paper")) );
+  lcd_lib_draw_string_centerP(LS(30, 37, 37), LS(PSTR("on the plate"),
+                                                 PSTR("on the plate"),
+                                                 PSTR("on the plate")));
+}
+
+/****************************************************************************************
+ * Auto level :waiting Auto leveling refine resume
+ *
+ ****************************************************************************************/
+
+static void doAutoLevelRefine(){
+  
+  char buffer[64];
+  
+  char *bufferPtr;
+  
+  
+  autoLevelRefineIndex++;
+  
+  if (autoLevelRefineIndex == NodeNum) {
+    doCooldown();
+    manualLevelState=MANUAL_LEVEL_STOP;
+
+    writeSensorOffset();
+    
+    SERIAL_BED_DEBUGLNPGM("fittingBedArraydoAutoLevelRefine");
+    for (int index=0; index<NodeNum; index++) {
+      SERIAL_BED_DEBUG("G1 F4000 X");
+      SERIAL_BED_DEBUG(dtostrf(fittingBedArray[index][X_AXIS], 10, 10, buffer));
+      SERIAL_BED_DEBUG(" Y");
+      SERIAL_BED_DEBUG(dtostrf(fittingBedArray[index][Y_AXIS], 10, 10, buffer));
+      SERIAL_BED_DEBUG(" Z");
+      SERIAL_BED_DEBUGLN(dtostrf(fittingBedArray[index][Z_AXIS]-ADDING_Z_FOR_POSITIVE, 10, 10, buffer));
+    }
+
+    SERIAL_BED_DEBUGLNPGM("fittingBedArraydoAutoLevelRefine");
+    for (int index=0; index<NodeNum; index++) {
+      SERIAL_BED_DEBUGLN(dtostrf(fittingBedSensorOffset[index], 10, 10, buffer));
+    }
+    
+    SERIAL_BED_DEBUGLNPGM("togethertoLevelRefine");
+    for (int index=0; index<NodeNum; index++) {
+      SERIAL_BED_DEBUG("G1 F4000 X");
+      SERIAL_BED_DEBUG(dtostrf(fittingBedArray[index][X_AXIS], 10, 10, buffer));
+      SERIAL_BED_DEBUG(" Y");
+      SERIAL_BED_DEBUG(dtostrf(fittingBedArray[index][Y_AXIS], 10, 10, buffer));
+      SERIAL_BED_DEBUG(" Z");
+      SERIAL_BED_DEBUGLN(dtostrf(fittingBedArray[index][Z_AXIS] + fittingBedSensorOffset[index] - ADDING_Z_FOR_POSITIVE, 10, 10, buffer));
+    }
+    
+    fittingBed();
+    add_homeing[Z_AXIS] = 1.0/plainFactorC;
+    add_homeing[Z_AXIS] -= -ADDING_Z_FOR_POSITIVE;
+    add_homeing[Z_AXIS] -= touchPlateOffset;
+    fittingBedUpdateK();
+    SERIAL_BED_DEBUGLNPGM("add_homeing[Z_AXIS]");
+    SERIAL_BED_DEBUGLN(add_homeing[Z_AXIS]);
+    Config_StoreSettings();
+    
+    enquecommand_P(PSTR("G28\nM84"));
+    lcd_change_to_menu(lcd_menu_maintenance,1, MenuForward);
+    dropsegments = DROP_SEGMENTS;
+    nextEncoderPos=1;
+    
+    return;
+  }
+  
+  enquecommand_P(PSTR("G1 F3000 X0 Y0 Z5"));
+
+}
+
+static void lcd_menu_maintenance_auto_level_refine_process(){
+  
+  char buffer[64];
+  
+  static bool error = 0;
+  
+  char *bufferPtr;
+  
+  if (printing_state == PRINT_STATE_NORMAL && commands_queued() <3) {
+    
+    if (lcd_lib_encoder_pos / ENCODER_TICKS_PER_SCROLL_MENU_ITEM != 0) {
+      //Only move E.
+      
+      fittingBedSensorOffset[autoLevelRefineIndex] -= 0.03* lcd_lib_encoder_pos / ENCODER_TICKS_PER_SCROLL_MENU_ITEM;
+      lcd_lib_encoder_pos = 0;
+      menuTimer = 0;
+    }
+    
+    if (millis()-menuTimer>350) {
+      error = !error;
+      menuTimer = millis();
+      bufferPtr=buffer;
+      
+      strcpy_P(bufferPtr, PSTR("G1 X"));
+      bufferPtr+=strlen_P(PSTR("G1 X"));
+      
+      bufferPtr=float_to_string(fittingBedArray[autoLevelRefineIndex][X_AXIS], bufferPtr);
+      
+      strcpy_P(bufferPtr, PSTR(" Y"));
+      bufferPtr+=strlen_P(PSTR(" Y"));
+      
+      bufferPtr=float_to_string(fittingBedArray[autoLevelRefineIndex][Y_AXIS], bufferPtr);
+      
+      strcpy_P(bufferPtr, PSTR(" Z"));
+      bufferPtr+=strlen_P(PSTR(" Z"));
+      
+      bufferPtr=float_to_string(fittingBedSensorOffset[autoLevelRefineIndex] +fittingBedArray[autoLevelRefineIndex][Z_AXIS] + (error?0.06:0)  - ADDING_Z_FOR_POSITIVE, bufferPtr);
+      
+      enquecommand(buffer);
+    }
+    
+  }
+  
+  if (isFactorySensorOffsetMode()) {
+    lcd_info_screen(NULL, doAutoLevelRefine, LS(PSTR("Factory DONE"),
+                                                PSTR("Factory DONE"),
+                                                PSTR("Factory DONE")) , MenuForward);
+  }
+  else{
+    lcd_info_screen(NULL, doAutoLevelRefine, LS(PSTR("DONE"),
+                                                PSTR("DONE"),
+                                                PSTR("DONE")) , MenuForward);
+  }
+  
+  lcd_lib_draw_string_centerP(LS(10, 11, 11) , LS(PSTR("Press up and down."),
+                                                  PSTR("Press up and down."),
+                                                  PSTR("Press up and down.")));
+  
+  lcd_lib_draw_string_centerP(LS(20, 24, 24), LS(PSTR("Move paper until feel"),
+                                                 PSTR("Move paper until feel"),
+                                                 PSTR("Move paper until feel")));
+  
+  lcd_lib_draw_string_centerP(LS(30, 37, 37), LS(PSTR("resistance repeatly"),
+                                                 PSTR("resistance repeatly"),
+                                                 PSTR("resistance repeatly")));
+}
+
+
 /****************************************************************************************
 * Manual Level :heat_for_manual_level
 ****************************************************************************************/
@@ -334,8 +625,7 @@ static void doManualLevel()
     circleDegree=0;
     circleRadius=CIRCLE_RADIUS;
     manualLevelState=MANUAL_LEVEL_ENABLE;
-    fittingBedOffsetInit();
-    
+  
     fittingBedArrayInit();
     plainFactorA=plainFactorABackUp;
     plainFactorB=plainFactorBBackUp;
@@ -421,8 +711,6 @@ static void lcd_menu_maintenance_heat_for_manual_level()
 {
   LED_GLOW_HEAT();
 
-  static unsigned long heatupTimer=millis();
-
   lcd_info_screen(lcd_menu_maintenance, doCancelHeatManualLevel, LS(PSTR("ABORT"),
                                                                     PSTR("\xC1" "\x80"  "\x83" "\x80"  ),
                                                                     PSTR("\xE5" "\x83"  "\xD7" "\x82"  "\xDB" "\x82"  )) , MenuForward);
@@ -439,11 +727,11 @@ static void lcd_menu_maintenance_heat_for_manual_level()
   for(uint8_t e=0; e<EXTRUDERS; e++)
   {
     if (current_temperature[e] < target_temperature[e] - TEMP_HYSTERESIS || current_temperature[e] > target_temperature[e] + TEMP_HYSTERESIS) {
-      heatupTimer=millis();
+      menuTimer=millis();
     }
   }
 
-  if (millis()-heatupTimer>=TEMP_RESIDENCY_TIME*1000UL && printing_state == PRINT_STATE_NORMAL)
+  if (millis()-menuTimer>=TEMP_RESIDENCY_TIME*1000UL && printing_state == PRINT_STATE_NORMAL)
   {
     doManualLevel();
     lcd_change_to_menu(lcd_menu_maintenance_manual_level);
@@ -495,13 +783,11 @@ void manualLevelRoutine()
       return;
     }
 
-    static unsigned long manualLevelTimer=millis();
-
     if (feedrate>=1000) {
-      manualLevelTimer=millis();
+      menuTimer=millis();
     }
     else{
-      if (millis()-manualLevelTimer>1000) {
+      if (millis()-menuTimer>1000) {
         feedrate=3000;
       }
     }
@@ -514,7 +800,7 @@ void manualLevelRoutine()
         circleRadius-=0.4;
         plan_set_e_position(0);
         if (circleRadius<2) {
-          manualLevelState = MANUAL_LEVLE_STOP;
+          manualLevelState = MANUAL_LEVEL_STOP;
           return;
         }
       }
@@ -532,7 +818,7 @@ void manualLevelRoutine()
 
 static void lcd_menu_maintenance_manual_level()
 {
-  if (printing_state == PRINT_STATE_NORMAL && !commands_queued() && !is_command_queued()) {
+  if (printing_state == PRINT_STATE_NORMAL && !commands_queued()) {
     
     float circleDegreeBuffer;
     
@@ -605,7 +891,7 @@ static void lcd_menu_maintenance_manual_level()
   }
   
   
-  if (manualLevelState == MANUAL_LEVLE_STOP) {
+  if (manualLevelState == MANUAL_LEVEL_STOP) {
     doFinishManualLevel();
     lcd_change_to_menu(lcd_menu_maintenance);
   }
@@ -911,7 +1197,7 @@ void lcd_menu_maintenance_advanced_bed_heatup()
   {
     lcd_change_to_menu(previousMenu, previousEncoderPos, MenuBackward);
     lcd_lib_button_up_down_reversed = false;
-    target_temperature_bed = 0;
+//    target_temperature_bed = 0;
   }
 
   char buffer[16];
@@ -1014,7 +1300,6 @@ static void lcd_menu_advanced_movement()
 ****************************************************************************************/
 static void lcd_menu_maintenance_extrude()
 {
-  static unsigned long activeTimer = millis();
   LED_NORMAL();
   if (lcd_lib_encoder_pos / ENCODER_TICKS_PER_SCROLL_MENU_ITEM != 0)
   {
@@ -1025,15 +1310,15 @@ static void lcd_menu_maintenance_extrude()
       plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], EMoveSpeed, active_extruder);
       lcd_lib_encoder_pos = 0;
     }
-    activeTimer = millis();
+    menuTimer = millis();
     target_temperature[active_extruder] = material[active_extruder].temperature;
   }
   
   if (current_temperature[active_extruder]<200) {
-    activeTimer = millis();
+    menuTimer = millis();
   }
   
-  if (millis()-activeTimer > 30000UL) {
+  if (millis()-menuTimer > 30000UL) {
       target_temperature[active_extruder] = 0;
   }
   
@@ -1344,6 +1629,9 @@ static void lcd_advanced_about_details(uint8_t nr)
       case OVERLORD_TYPE_MS:
         strcpy_P(bufferPtr, PSTR("MS"));
         break;
+      case OVERLORD_TYPE_PSD:
+        strcpy_P(bufferPtr, PSTR("PSD"));
+        break;
       default:
         break;
     }
@@ -1464,6 +1752,9 @@ void lcd_menu_advanced_version()
     case OVERLORD_TYPE_MS:
       strcpy_P(bufferPtr, PSTR("MS"));
       break;
+    case OVERLORD_TYPE_PSD:
+      strcpy_P(bufferPtr, PSTR("PSD"));
+      break;
     default:
       break;
   }
@@ -1533,7 +1824,6 @@ static void lcd_menu_advanced_level()
   int_to_string(int(READ(Z_MAX_PIN)), buffer+strlen(buffer), PSTR(" "));
   lcd_lib_draw_string_center(20, buffer);
 
-  static unsigned long advancedLevelTimer=millis();
   static uint8_t xState=SCREW_NORMAL;
   static uint8_t yState=SCREW_NORMAL;
   static uint8_t zState=SCREW_NORMAL;
@@ -1599,11 +1889,11 @@ static void lcd_menu_advanced_level()
   }
   
   if (blocks_queued()) {
-    advancedLevelTimer=millis();
+    menuTimer=millis();
   }
 
-  if (millis()-advancedLevelTimer>300) {
-    advancedLevelTimer=millis();
+  if (millis()-menuTimer>300) {
+    menuTimer=millis();
 
 
     switch (touchState) {
@@ -1865,6 +2155,8 @@ static char* lcd_menu_device_item(uint8_t nr)
     strcpy_P(card.longFilename, PSTR("PS"));
   else if (nr == OVERLORD_TYPE_MS)
     strcpy_P(card.longFilename, PSTR("MS"));
+  else if (nr == OVERLORD_TYPE_PSD)
+    strcpy_P(card.longFilename, PSTR("PSD"));
   else
     strcpy_P(card.longFilename, PSTR("???"));
 
@@ -1895,6 +2187,8 @@ static void lcd_menu_device_details(uint8_t nr)
     lcd_draw_detailP(PSTR("Pro with Sensor"));
   else if(nr == OVERLORD_TYPE_MS)
     lcd_draw_detailP(PSTR("Mini with Sensor"));
+  else if(nr == OVERLORD_TYPE_PSD)
+    lcd_draw_detailP(PSTR("Pro with Sensor and Door"));
 }
 
 void lcd_menu_device()
@@ -1913,8 +2207,10 @@ void lcd_menu_device()
     else{
       storeDevice(lcd_lib_encoder_pos);
       retrieveDevice();
-      Config_ResetDefault();
-      Config_StoreSettings();
+      if (Device_isLevelSensor) {
+        clearFactorySensorOffset();
+      }
+      delay(20);
       doFactoryReset();
     }
   }
